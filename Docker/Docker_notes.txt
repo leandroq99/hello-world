@@ -1,0 +1,722 @@
+### Estudo DOCKER ###
+
+#Conceitos básicos
+O docker é um software de contêinerização (empacotamento de software) de containers linux.
+O container basicamente é o isolamento de um processo/aplicação do sistema operacional, onde o consumo de recursos computacionais são extremamente reduzidos.
+O conteiner precisa de um Sistema Operacional subjacente igual para funcionar.
+Um container pode subir de um ambiente para outro de forma rápida e fácil (Produção, Homologação, Teste)
+Um dos principais motivos para se utilizar docker/containers é para quebrar uma aplicação monolitica/legada em microserviços, que são partes do software que funcionam
+de forma independente e conversam entre si através de API (Application Programming Interface)
+
+#Instalar o docker em sua última versão - método simples -
+
+# curl -fsSL https://get.docker.com -o get-docker.sh
+# sh get-docker.sh
+
+# docker --version
+Mostra a versão do docker instalada.
+
+# docker search hello-world
+Pesquisa uma imagem
+
+# docker pull hello-world
+Faz o download da imagem "hello-world"
+
+# docker pull mariadb:20.2
+É possivel puxar a imagem de aplicação com uma versão específica, através de tags (pode ser encontradas em: https://hub.docker.com)
+
+# docker images
+Lista as imagens instaladas
+
+# docker run hello-world
+Executa a imagem
+
+# docker ps
+Lista os containers em execução
+
+# docker ps -a
+Lista os containers que estão em execução e os que já finalizaram
+
+
+# docker pull debian
+# docker run -dit debian
+Baixa uma imagem do sistema operacional "Debian" e o executa com as opções "-i",  "-t" e "-d", para permitir um bash interativo dentro do container
+-t, --tty (Allocate a pseudo-TTY)
+-i, --interactive (Keep STDIN open even if not attached)
+-d, --detach (Run container in background and print container ID)
+
+obs: Mesmo se você não obtiver a imagem antes de executar o "docker run", quando executá-lo ele buscará o nome da imagem no repositório e vai instalar/executar a mesma.
+
+# docker exec -it <CONTAINER-ID> /bin/bash
+Com o conteiner executando o sistema operacional debian em "background", para acessá-la usamos a sintaxe acima.
+
+
+# docker stop <CONTAINER-ID>
+Para a execução do conteiner
+
+# docker start <CONTAINER-ID
+Inicia um container
+
+# docker rm <CONTAINER-ID>
+Remove um conteiner da máquina
+
+# docker rm -f <CONTAINER-ID>
+Para a execução de um container e o remove em seguida.
+
+# docker container prune
+Remove todos os containers que estão parados.
+
+# docker rmi <IMAGEM>
+Remove uma imagem da máquina
+
+# docker run -dti --name NOME_DO_CONTEINER centos
+Executa um container passando um parametro de "nome"
+
+# docker cp /diretorio/arquivo.txt <CONTEINER-ID>:/diretorio/destino/
+Copiando arquivos locais para dentro do container
+
+# docker cp <CONTEINER-ID>:/diretorio_origem/arquivo.txt /diretorio/destino/
+Copiando arquivos do conteiner para a máquina local
+
+# docker info
+Exibe informações gerais sobre o server em que o docker está instalado (quantidade containers criados, em execução, parados, SO, CPU, memória e etc).
+
+# docker logs <CONTAINER-ID>
+Exibe logs da aplicação em execução no container
+
+# docker top <CONTAINER-ID>
+Exibe os processos em execução no container
+
+### Subindo um conteiner mysql + criação de tabela
+
+Para subir um conteiner mysql precisamos declarar uma variável de ambiente (MYSQL_ROOT_PASSWORD) e liberar a porta 3306
+
+# docker pull mysql
+
+# docker run -e MYSQL_ROOT_PASSWORD=my-secret-pass --name instance-sql -d -p 3306:3306 mysql
+Sobe um container mysql chamado "instance-sql"
+Paramêtros:
+-e, --env list (Set environment variables)
+-p, --publish list (Publish a container's port(s) to the host)
+
+## Criando uma tabela
+
+# docker run -it instance-mysql /bin/bash
+Acessar o container
+
+# mysql -u root -p --protocol=tcp
+Especifica o usuário e o protocolo de comunicação, no caso TCP (Transmission Control Protocol), após isso irá pedir a senha de root configurada previamente.
+
+mysql> CREATE DATABASE name;
+Cria um banco de dados
+
+mysql> show databases;
+Mostra os bancos existentes
+
+mysql> connect <database>;
+
+CREATE TABLE dados (
+    AlunoID int,
+    Nome varchar(50),
+    Sobrenome varchar(50),
+    Endereco varchar(150),
+    Cidade varchar(50)
+);
+
+mysql> show tables;
+
+obs: Quando você cria um container, automaticamente é criado uma nova interface de rede em sua máquina. No procedimento acima, liberamos a porta 3306 para escutar requisições 
+mysql e encaminhar para o nosso container, dessa forma, não é necessário entrar no container para usar a aplicação.
+
+3: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default 
+    link/ether 02:42:59:6f:84:3a brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:59ff:fe6f:843a/64 scope link 
+       valid_lft forever preferred_lft forever
+
+Se você instalar o "mysql-client", é possível conectar no banco de dados do container de forma local.
+
+
+# docker inspect <CONTEINER-ID>
+Exibe diversas informações sobre o container, como endereço IP
+
+
+## Armazenando dados persistentes de um container
+Quando removemos um container sem antes mapear um filesystem local para armazenar os dados, tudo será perdido. Porém, há uma forma de salvar os dados e torná-los persistentes para uso
+de outros containers.
+
+Para isso, basta utilizarmos a opção '--volume=' (-v) e mapear um volume local e o volume que armazena os dados dentro do container (é possível obter essa informação pelo
+comando docker inspector <CONTAINER-ID>)
+
+
+# docker run -e MYSQL_ROOT_PASSWORD=mysqlserver --name instance-mysql -d -p 3306:3306 --volume=/diretorio/local:/diretorio/no/container mysql
+
+obs: o --mount é uma alternativa ao comando --volume (-v), é possível fazer um bind também, especificando depois do type: 
+# docker run --mount type=bind,src=/origem,dst=/destino <IMAGE>
+
+Esse método de armazenamento persistente é chamando de "bind", que além dele, existem outros dois tipos.
+
+- Named volumes
+- dockerfile volumes
+
+O Named volumes é similar ao bind, porém o usuário nomeia um volume ao criá-lo e esse volume é gerenciado pelo docker (criado por padrão em /var/lib/docker)
+
+# docker volume create nome-do-volume
+Cria um Named volumes (/var/lib/docker)
+
+# docker volume ls
+Lista os volumes criados
+
+# docker volume rm nome-do-volume
+Remove um volumo, porém nenhum container deve estar usando ele no momento da exclusão.
+
+# docker volume prune
+Exclui todos os volumes (USAR COM CUIDADO!)
+
+# docker run --mount type=volume,src=nome-do-volume,dst=/diretorio/no/container <IMAGE>
+Referenciando um Named volumes no container
+
+
+
+O dockerfile volumes é uma configuração incluída dentro da instrução "VOLUME", onde o usuário especifica o diretório que irá salvar os dados persistentes. Esses dados também serão
+gerenciados pelo docker no /var/lib/docker.
+
+
+### Limitando o uso de recursos de um container
+
+É possível limitar o uso de recursos computacionais de um determinado container, em sua criação ou efetuando um update.
+
+# docker stats <CONTAINER-ID>
+Mostra status de consumo de recursos do container
+
+# docker run -dti --cpus 0.5 --memory bytes 256M <IMAGE>
+Cria um container já especificando os limites de uso
+
+# docker update --cpus 1 --memory bytes 128M <CONTAINER-ID>
+Faz o update dos limites de um container já existente
+
+
+### Comandos de rede no docker
+
+# docker network ls
+Lista as redes existentes
+
+# docker network inspect <NETWORK>
+Mostra informações sobre a rede/sub-rede especificado
+
+# docker network create <NETWORK>
+Cria uma nova rede docker
+
+# docker network rm <NETWORK>
+Remove uma rede docker
+
+# docker network connect <NETWORK> <COMTAINER-ID>
+Conecta um container a determinada rede
+
+# docker network disconnect <NETWORK> <CONTAINER-ID>
+Disconecta um container de uma determinada rede
+
+# docker network prune
+Remove todas as redes não utilizadas (MUITO CUIDADO!)
+
+# docker run -dti --network <NETWORK> <IMAGE>
+Cria e executa um container em na rede especificada
+
+
+
+### dockerfile
+O dockerfile é uma maneira automatizada de construir imagens de containers, através da leitura de instruções inseridas dentro de um "dockerfile"
+
+O exemplo que fiz em aula para assimilar esse conceito foi na construção de uma imagem executar a atualização do sistema, baixar o python3 e rodar uma aplicação simples.
+Sem o dockerfile, seria necessário criar o container, acessá-lo e executar os comandos manualmente para preparar a sua instalação, ou seja, o dockerfile permite automatizar o build de sua aplicação!
+
+# docker build -t nome-da-imagem /diretorio/onde/esta/o/dockerfile
+Comando para construir a imagem a partir das instruções de um dockerfile (pode-se usar tbm docker image build, same thing)
+
+Instruções do dockerfile:
+FROM (Indica a imagem que será construída, ex: debian, mysql, httpd, python, php)
+
+WORKDIR (Indica o diretório que o container irá trabalhar quando iniciar)
+
+RUN  (Executa comandos dentro do container, ex: apt update && apt install -y python3 && PATH=$PATH:$PWD && export PATH)
+
+COPY (Copia um arquivo na sua máquina local para o container, ex: COPY app.py /opt/app.py)
+
+CMD  (Especifica o comando pretendido pela imagem, ex: um script python, um serviço)
+
+EXPOSE (Instrução que especifica para o docker que aquele container irá escutar determinada porta durante sua execução, ex: EXPOSE 80 443)
+
+LABEL (Adiciona um metadata chave-valor ao container, como uma descrição, ex: LABEL description="APP VERSION 1.0")
+
+ENV  (Cria uma variavel de ambiente dentro do container, ex: ENV APACHE_RUN_USER="www-data")
+
+ENTRYPOINT (Permite que o container rode como um executável, ex: ENTRYPOINT ["/usr/sbin/apachectl", "-D", "FOREGROUND")
+
+	"-D" e 'FOREGROUND" faz com que a aplicação execute em primeiro plano
+
+	
+obs: Não confunda RUN com CMD. O RUN realmente executa um comando e confirma o resultado; O CMD não executa nada no momento da compilação, mas especifica o comando pretendido para a imagem.
+
+
+Exemplo de um dockerfile construindo uma imagem debian, executando um apache server e configurando um site.
+###########################################################################################################
+FROM debian
+
+RUN apt-get update && apt-get install apache2 && apt-get clean
+
+ADD site1.tar /var/www/html
+
+LABEL description = "Apache Server"
+
+EXPOSE 80
+
+VOLUME /var/www/html
+
+ENV APACHE_LOG_DIR="/var/log/apache2"
+ENV APACHE_RUN_USER="www-data"
+ENV APACHE_RUN_GROUP="www-data"
+ENV APACHE_PID_FILE="/var/run/apache2.pid"
+ENV APACHE_LOCK_DIR"/var/lock"
+
+ENTRYPOINT ["/usr/sbin/apachectl", "-D", "FOREGROUND"]
+###########################################################################################################
+
+
+# docker login
+Faz o login em sua conta no hub.docker
+
+# docker push DockerHubAccount/<IMAGE>
+Envia uma imagem sua para o seu repositório no hub.docker
+
+### Docker registry
+
+O docker registry é uma imagem de container que é utilizado para armazenar outras imagens, geralmente em um servidor local da empresa, onde apenas usuários autorizados possuem acesso, é uma alternativa ao docker hub.
+
+# docker run -d -p 5000:5000 --name nome-da-imagem registry:2
+Baixa a imagem do registry em um servidor local específico para armazenamento de imagens do docker.
+
+# curl 192.168.1.xx:5000/v2/_catalog
+Com esse comando, é possível saber remotamente quais imagens existem no docker registry.
+
+# docker push 192.168.1.xx:5000/minha_app_done
+Envia a imagem de sua preferência ao servidor registry
+
+obs: Pode ser que ocorra um erro "http: server gave HTTP response to HTTPS client", onde ele diz que essa requisição não é segura. Para contornar isso, é necessário dizer ao docker que o servidor registry é seguro.
+Editando o arquivo "/etc/docker/daemon.json" e incluindo a linha: { "insecure-registries":["<ENDEREÇO-IP>:5000"] }
+
+Após isso, reinicie o serviço do docker.
+
+# docker pull 192.168.1.xx:5000/minha_app_done
+Baixa a imagem diretamente do servidor registry
+
+
+### docker-compose
+O docker compose é uma ferramenta utilizada para compartilhar aplicativos entre containers. Isso é feito através de um arquivo de configuração YAML, onde é especificado os serviços, portas, rede e volumes de armazenamento 
+persistente e muito mais.
+
+obs: o docker compose por padrão não é instalado junto com  o docker.
+
+Segue detalhes do laboratório que fiz para entender o docker-compose:
+
+1 - Criei um novo volume
+# docker volume create compose-volume
+
+2 - Criei uma nova rede
+# docker network create compose-network
+
+3 - Criei um diretório onde irei trabalhar com o docker-compose
+# mkdir -p /compose/mysql_adminer/
+
+4 - Criei um arquivo chamado "docker-compose.yml"
+# touch docker-compose.yml"
+
+Nesse arquivo, eu inclui as configurações referente a versão do docker compose e os serviços que eu iria instalar, que nesse caso é um servidor mysql e o adminer (administrador de banco de dados)
+
+5 - O arquivo docker-compose.yml ficou com esse conteúdo:
+
+---
+
+version: "3.7"
+
+services:
+  mysqlsrv:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: "loqcmo123"
+      MYSQL_DATABASE: "testedb"
+    ports:
+      - "3306:3306"
+    volumes:
+      - "compose-volume"
+    networks:
+      - "compose-network"
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - "compose-network"
+
+networks:
+  compose-network:
+    driver: bridge
+...
+
+6 - Subir os containers em background (Validar antes se já não existe outro serviço/aplicação utilizando as portas configuradas, nesse caso eram: 3306 e 8080)
+# docker-compose up -d
+
+7 - Baixar os containers (irá baixar todos os containers)
+# docker-compose down
+
+
+## Docker-machine
+Para ambientes windows é necessário baixar o "Git Bash"
+# docker-machine create -d "virtualbox" --virtualbox-disk-size "10000" docker1
+Cria uma máquina virtual no "virtualbox"
+
+# docker-machine create -d "amazonec2" --amazonec2-region "sa-east-1" <machine>
+Cria uma máquina virtual na Cloud pública amazon
+
+# docker-machine ls
+Lista as máquinas criadas
+
+# docker-machine stop <machine>
+Efetua um stop na máquina que estiver em execução.
+
+# docker-machine rm <machine>
+Remove a máquina criada anteriormente
+
+# docker-machine ssh <machine>
+Conecta-se na máquina virtual criada (*obs: tem que ser o nome!!)
+
+# docker-machine ip <machine>
+Coleta o IP da máquina virtual
+
+
+# O que é um cluster?
+Um cluster é um grupo de computadores que trabalham em conjunto, cada computador em um cluste é conhecido como nó (node)
+
+O que é o docker swarm?
+O docker swarm é uma ferramenta de orquestração de containers, usado principalmente na distribuição e agendamento de cargas de trabalho.
+
+O swarm é composto por dois tipos de hosts de container:
+- Nó gerenciador
+- Nó de trabalho
+
+Todo comando de gerencia do docker swarm deve ser executado em um nó gerenciador
+
+Uma das principais vantagens do docker swarm é a disponibilidade dos containers, caso um nó em um cluster fique indisponível, os containers rodando nesse node irão ser migrados para outro de forma automática.
+
+## Começando com o docker swarm
+
+Com as máquinas virtuais criadas, vamos iniciar a configuração do laboratório para explorar o docker swarm
+
+$ docker-machine ls
+NAME      ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER      ERRORS
+docker1   -        virtualbox   Running   tcp://192.168.99.101:2376           v19.03.12
+docker2   -        virtualbox   Running   tcp://192.168.99.102:2376           v19.03.12
+docker3   -        virtualbox   Running   tcp://192.168.99.103:2376           v19.03.12
+
+
+# docker swarm init --advertise-addr 192.168.99.101
+Iniciando o docker swarm e atribuindo o "docker1" como manager node
+
+Swarm initialized: current node (xj8zwqlvidm9jin438la6xeyh) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-5d7uscobeopbas9c0s8d30mfr9uv5v8o3h8hlduca3qk1ntmp1-d45gwynl8pw2clx4b7lm89yl0 192.168.99.101:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+Para adicionar um node de trabalho a esse cluster swarm, basta digitar o token acima nas outros duas máquinas
+
+# docker-machine ssh docker2
+# docker swarm join --token SWMTKN-1-5d7uscobeopbas9c0s8d30mfr9uv5v8o3h8hlduca3qk1ntmp1-d45gwynl8pw2clx4b7lm89yl0 192.168.99.101:2377
+
+# docker-machine ssh docker3
+# docker swarm join --token SWMTKN-1-5d7uscobeopbas9c0s8d30mfr9uv5v8o3h8hlduca3qk1ntmp1-d45gwynl8pw2clx4b7lm89yl0 192.168.99.101:2377
+
+Caso você perca esse token, basta usar o comando no node manager:
+# docker swarm join-token worker
+
+Volte ao node manager (docker1)
+
+# docker node ls
+Lista os nodes no cluster swarm
+ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+xj8zwqlvidm9jin438la6xeyh *   docker1             Ready               Active              Leader              19.03.12
+jvruvlw77d7pr2sde4kwtv37x     docker2             Ready               Active                                  19.03.12
+o4a6lqdld1kpj81afqb6vv7vo     docker3             Ready               Active                                  19.03.12
+
+
+# docker service ls
+Lista os serviços provisionados para os nodes
+ID                  NAME                MODE                REPLICAS            IMAGE               PORTS
+ttqc7tlgidge        alpine-server       replicated          2/2                 alpine:latest
+lw7urg4inxhn        ubuntu-server       replicated          2/2                 ubuntu:latest
+xnlhknk29uwc        web-server          replicated          10/10               httpd:latest        *:8080->80/tcp
+
+
+# docker service create --name <nome_do_serviço> --replicas 10 -p 80:80 httpd
+provisiona 10 instâncias de containers referente ao serviço do apache, distribuidos entre os 3 nodes do cluster swarm
+
+# docker service ps <nome_do_serviço>
+Lista os containers criados nos nodes do cluster 
+
+# docker service update --availability drain <node>
+Muda o status do node especificado para "drain", isso significa que os containers que estavam rodando nesse node antes são distribuidos para outros nodes e além disso, esse node não aceitará novos containers.
+
+Mais sobre a opção "update --availability"
+
+Além do "drain", temos os status:
+
+- pause (mantém os containers em execução, mas não aceita novos)
+- active (receberá novos containers)
+
+# docker node promote <node>
+Transforma um node em um node manager
+
+# docker node demote <node>
+Retira o status de manager de um node
+
+Sobre a disponibilidade do cluste swarm, é necessário que no mínimo 51% dos node managers estejam ativos, caso ocorra falhas.
+É comum de se ter backups dos node managers prontos para assumir nessa situação.
+
+É possível ver isso na prática:
+
+No cenário abaixo, os nodes "docker1" e "docker2" são node managers, e os serviços provisionados estão ok.
+docker@docker1:~$ docker node ls
+ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+xj8zwqlvidm9jin438la6xeyh *   docker1             Ready               Drain               Leader              19.03.12
+jvruvlw77d7pr2sde4kwtv37x     docker2             Ready               Active              Reachable           19.03.12
+o4a6lqdld1kpj81afqb6vv7vo     docker3             Ready               Active                                  19.03.12
+dhr8h80ipkuhg9dfdpgodctsy     docker4             Ready               Active                                  19.03.12
+
+
+Porém, se pararmos um dos nodes, o outro não poderá assumir, pois temos 2 node managers, ou seja, cada um representa 50%, se um deles cai, logo não teremos 51% dos nodes managers ativos.
+
+Para esse caso, seria necessário 3 node managers, com isso, caso um node manager ficasse indisponível, outro iria assumir as cargas de trabalho.
+
+# docker node update --role "worker" docker2
+Esse comando muda o node docker2 que estava como manager, para "worker"
+
+
+## Volumes no docker swarm
+
+Quando você for subir uma aplicação, muito provavelmente você terá que criar um volume compartilhado entre os containers do cluster, mas como fazer isso?
+
+Nesse lab, utilizamos o NFS (Network File System)
+
+Com ele conseguimos mapear um diretório virtual na rede e compartilhar entre hosts numa mesma rede/sub-rede
+
+Para isso funcionar, devemos:
+
+- Instalar o nfs-server em um host (será o principal)
+- Instalar o nfs-common nos demais hosts (clientes)
+
+Feito isso, no host em que instalamos o nfs-server, editamos o arquivo: /etc/exports
+Ele terá essa cara:
+# /etc/exports: the access control list for filesystems which may be exported
+#		to NFS clients.  See exports(5).
+#
+# Example for NFSv2 and NFSv3:
+# /srv/homes       hostname1(rw,sync,no_subtree_check) hostname2(ro,sync,no_subtree_check)
+#
+# Example for NFSv4:
+# /srv/nfs4        gss/krb5i(rw,sync,fsid=0,crossmnt,no_subtree_check)
+# /srv/nfs4/homes  gss/krb5i(rw,sync,no_subtree_check)
+#
+
+#Exemplo de configuracao para mapear o volume de container em outros hosts
+#/var/lib/docker/volumes/app/_data *(rw,sync,subtree_check)
+
+/var/lib/docker/volumes/my-php_app/_data *(rw,sync,subtree_check)
+
+
+A configuração deve ser feita dessa forma:
+/diretorio/que/sera/compartilhado host-destino(configurações, como: rw,sync,subtree_check)
+
+
+Com isso concluído, execute o comando para exportar o diretório:
+
+# exportfs -var
+
+-v (be verbose)
+-a (Export or unexport all directories)
+-r (Reexport  all  directories)
+
+
+Por fim, acesse os hosts destinos monte o diretório
+
+# mount <IP_NFS_SERVER>:/diretorio/que/sera/compartilhado /onde/ficara/esse/diretorio/no/destino
+
+Com esse procedimento, é possível compartilhar arquivos com vários hosts através de um volume.
+
+
+
+# docker stack deploy -c docker-compose.yml php-app
+Sobe uma stack de aplicação via docker-compose
+
+=====================
+docker-compose.yml
+=====================
+
+version: "3.7"
+
+services:
+  web:
+
+    image: webdevops/php-apache:alpine-php7
+    ports:
+      - "80:80"
+    volumes:
+      - app:/app
+
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+
+  phpmyadmin:
+
+    image: phpmyadmin/phpmyadmin
+    environment:
+      MYSQL_ROOT_PASSWORD: "Senha123"
+      PMA_HOST: "54.234.153.24"
+
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+ ports:
+      - "8080:80"
+    volumes:
+      - php-ini:/usr/local/etc/php/conf.d/php-phpmyadmin.ini
+
+
+
+volumes:
+
+  app:
+  php-ini:
+
+====================================================================
+
+
+# docker stack ls
+Lista as stacks criadas
+NAME      SERVICES   ORCHESTRATOR
+my-php    2          Swarm
+
+# docker stack ps <serviço>
+Comando para saber em quais containers a stack está sendo executada
+tor6ibmk7x72   my-php_phpmyadmin.1       phpmyadmin/phpmyadmin:latest       leandro-VirtualBox   Running         Running 3 hours ago                                     
+x5gu4bexoopi   my-php_web.1              webdevops/php-apache:alpine-php7   leandro-VirtualBox   Running         Running 3 hours ago                                     
+7zwfozcg33n5   my-php_web.2              webdevops/php-apache:alpine-php7   Xubuntu              Running         Running 3 hours ago                                     
+1vhk24j0udpo   my-php_web.3              webdevops/php-apache:alpine-php7   Xubuntu2             Running         Running 14 minutes ago
+
+
+# docker stack rm <serviço>
+Vai remover toda a stack, desde serviços, containers replicados, volumes, networks e etc.
+
+
+
+## Subindo uma stack de serviço via docker compose e definindo em que node cada serviço irá subir.
+
+=====================
+docker-compose.yml
+=====================
+---
+
+version: "3.7"
+
+services:
+
+  proxy:
+    image: proxy-nginx
+    ports:
+      - "4500:4500"
+
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.dc == node-principal
+
+  mysql:
+    image: mysql:5.7
+    ports:
+      - "3306:3306"
+    volumes:
+      - "data:/var/lib/mysql"
+
+    environment:
+      MYSQL_ROOT_PASSWORD: "senha123"
+      MYSQL_DATABASE: "meubanco"
+
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.dc == node-principal
+
+
+  web:
+    image: webdevops/php-apache
+    ports:
+      - "80:80"
+    volumes:
+      - "app:/app"
+
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: "50M"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    
+    environment:
+      MYSQL_ROOT_PASSWORD: "senha123"
+      PMA_HOST: "192.168.1.7"
+
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+        - node.labels.dc == node-principal
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: "50M"
+
+volumes:
+  app:
+  data:
+
+...
+====================================================================
+
+
+Esse bloco, define o node em que o container irá subir.
+
+    deploy:
+      placement:
+        constraints:
+        - node.labels.dc == node-principal
+
+É necessário criar um label para o node antes de executar a stack, para isso basta:
+
+# docker node update --label-add chave=valor <node>
+onde a chave é (dc) e o valor é (node-principal), esses valores você quem define.
