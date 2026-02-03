@@ -1,0 +1,42 @@
+---
+- name: AWS Launch Template - Atualiza com Nova AMI
+  hosts: localhost
+  gather_facts: false
+  vars:
+    aws_region: "us-east-1"
+    launch_template_name: "my-launch-template"
+    new_ami_id: "ami-xxxxxxxxxx"  # Será passado pelo workflow anterior
+
+  tasks:
+    - name: Obtém informações do Launch Template
+      amazon.aws.ec2_launch_template_info:
+        launch_template_names:
+          - "{{ launch_template_name }}"
+        region: "{{ aws_region }}"
+      register: launch_template_info
+
+    - name: Exibe versão padrão atual
+      debug:
+        msg: "Launch Template versão padrão atual: {{ launch_template_info.launch_templates[0].default_version_number }}"
+
+    - name: Cria nova versão do Launch Template com a nova AMI
+      amazon.aws.ec2_launch_template:
+        launch_template_name: "{{ launch_template_name }}"
+        image_id: "{{ new_ami_id }}"
+        region: "{{ aws_region }}"
+      register: new_launch_template_version
+
+    - name: Exibe nova versão criada
+      debug:
+        msg: "Nova versão do Launch Template criada: {{ new_launch_template_version.latest_version_number }}"
+
+    - name: Define a nova versão como padrão
+      amazon.aws.ec2_launch_template:
+        launch_template_name: "{{ launch_template_name }}"
+        default_version: "{{ new_launch_template_version.latest_version_number }}"
+        region: "{{ aws_region }}"
+      register: launch_template_default_updated
+
+    - name: Confirma atualização
+      debug:
+        msg: "Versão padrão do Launch Template atualizada para: {{ new_launch_template_version.latest_version_number }}"

@@ -1,0 +1,21 @@
+---
+- name: AWS Auto Scaling - Scale Down para 0
+  hosts: localhost
+  gather_facts: false
+  vars:
+    aws_region: "us-east-1"
+    asg_name: "my-auto-scaling-group"
+
+  tasks:
+    - name: Reduz Auto Scaling Group para 0 instâncias
+      amazon.aws.autoscaling_group:
+        name: "{{ asg_name }}"
+        region: "{{ aws_region }}"
+        desired_capacity: 0
+        min_size: 0
+        max_size: 0
+      register: asg_scaling_down
+
+    - name: Exibe status do ASG
+      debug:
+        msg: "Auto Scaling Group {{ asg_name }} reduzido para 0 instâncias"

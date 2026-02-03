@@ -1,0 +1,21 @@
+---
+- name: Checkpoint - Validação Manual
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Pausa para validações
+      pause:
+        prompt: |
+          ====================================
+          CHECKPOINT - VALIDAÇÃO MANUAL
+          ====================================
+          
+          A instância template foi iniciada.
+          
+          Faça as validações necessárias:
+          1. Verifique se a instância está íntegra
+          2. Execute testes de aplicação
+          3. Valide configurações
+          
+          Pressione ENTER para continuar...

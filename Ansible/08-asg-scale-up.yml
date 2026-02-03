@@ -1,0 +1,32 @@
+---
+- name: AWS Auto Scaling - Reativa o ASG
+  hosts: localhost
+  gather_facts: false
+  vars:
+    aws_region: "us-east-1"
+    asg_name: "my-auto-scaling-group"
+    desired_capacity: 2
+    min_size: 1
+    max_size: 10
+
+  tasks:
+    - name: Reativa o Auto Scaling Group com configurações originais
+      amazon.aws.autoscaling_group:
+        name: "{{ asg_name }}"
+        region: "{{ aws_region }}"
+        desired_capacity: "{{ desired_capacity }}"
+        min_size: "{{ min_size }}"
+        max_size: "{{ max_size }}"
+      register: asg_scaling_up
+
+    - name: Exibe status final do ASG
+      debug:
+        msg: |
+          Auto Scaling Group reativado com sucesso!
+          - Desejado: {{ desired_capacity }}
+          - Mínimo: {{ min_size }}
+          - Máximo: {{ max_size }}
+
+    - name: Aguarda iniciação das novas instâncias
+      pause:
+        seconds: 60

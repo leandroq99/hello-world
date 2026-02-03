@@ -1,0 +1,25 @@
+---
+- name: AWS EC2 - Inicia Instância Template
+  hosts: localhost
+  gather_facts: false
+  vars:
+    aws_region: "us-east-1"
+    template_instance_id: "i-yyyyyyyyyy"  # ID da instância template
+
+  tasks:
+    - name: Liga a instância template
+      amazon.aws.ec2_instance:
+        instance_ids:
+          - "{{ template_instance_id }}"
+        state: running
+        region: "{{ aws_region }}"
+        wait: true
+      register: template_instance
+
+    - name: Exibe status da instância template
+      debug:
+        msg: "Instância template {{ template_instance_id }} está rodando"
+
+    - name: Aguarda instância estar pronta
+      pause:
+        seconds: 30

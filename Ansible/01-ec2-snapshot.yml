@@ -1,0 +1,26 @@
+---
+- name: AWS EC2 - Snapshot da Instância
+  hosts: localhost
+  gather_facts: false
+  vars:
+    aws_region: "us-east-1"
+    ec2_instance_id: "i-xxxxxxxxxx"  # ID da instância EC2
+    snapshot_description: "Snapshot from AAP Job Workflow"
+
+  tasks:
+    - name: Tira snapshot da instância EC2
+      amazon.aws.ec2_snapshot:
+        region: "{{ aws_region }}"
+        instance_id: "{{ ec2_instance_id }}"
+        snapshot_description: "{{ snapshot_description }}"
+        wait: true
+      register: snapshot_result
+
+    - name: Exibe Snapshot ID
+      debug:
+        msg: "Snapshot criado com sucesso: {{ snapshot_result.snapshot_id }}"
+
+    - name: Salva Snapshot ID para próximos jobs
+      set_fact:
+        snapshot_id: "{{ snapshot_result.snapshot_id }}"
+      cacheable: true

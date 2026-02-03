@@ -1,0 +1,28 @@
+---
+- name: AWS EC2 - Cria AMI da Instância Template
+  hosts: localhost
+  gather_facts: false
+  vars:
+    aws_region: "us-east-1"
+    template_instance_id: "i-yyyyyyyyyy"  # ID da instância template
+    ami_name: "template-ami-{{ ansible_date_time.iso8601_basic_short }}"
+
+  tasks:
+    - name: Cria AMI (imagem) da instância template
+      amazon.aws.ec2_ami:
+        instance_id: "{{ template_instance_id }}"
+        name: "{{ ami_name }}"
+        description: "AMI gerada automaticamente pelo AAP Workflow"
+        region: "{{ aws_region }}"
+        wait: true
+        root_device_name: /dev/xvda
+      register: ami_result
+
+    - name: Exibe AMI ID
+      debug:
+        msg: "AMI criada com sucesso: {{ ami_result.image_id }}"
+
+    - name: Armazena AMI ID para próximos jobs
+      set_fact:
+        new_ami_id: "{{ ami_result.image_id }}"
+      cacheable: true
