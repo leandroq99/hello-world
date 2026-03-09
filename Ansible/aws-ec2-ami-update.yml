@@ -21,11 +21,6 @@
       debug:
         msg: "Snapshot ID: {{ snapshot_result.snapshot_id }}"
     - name: 2. Reduz Auto Scaling Group para 0 instâncias
-      # Manages AWS Auto Scaling Groups (ASG)
-      # This module is used to create, modify, or delete Auto Scaling Groups in AWS
-      # It allows you to configure scaling policies, instance types, desired capacity, and other ASG parameters
-      # Required parameters typically include: name, launch_config or launch_template, min_size, max_size, desired_capacity
-      # Common use cases: scaling EC2 instances based on load, maintaining high availability, managing fleet capacity
       amazon.aws.autoscaling_group:
         name: "{{ asg_name }}"
         region: "{{ aws_region }}"
