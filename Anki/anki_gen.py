@@ -229,6 +229,14 @@ def cards_to_csv(cards: list[dict], output_path: Path, tags: str, deck: str, req
 
     print(f"[ok] {len(cards)} cards salvos em: {output_path}")
 
+    # Debug: mostra os primeiros 3 cards para verificar qtype
+    print()
+    print("[debug] Primeiros cards gerados:")
+    with open(output_path, "r", encoding="utf-8") as dbg:
+        for i, line in enumerate(dbg):
+            if i < 8:  # cabeçalhos + 3 cards
+                print(f"  {line.rstrip()}")
+
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
 def main():
