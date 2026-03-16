@@ -42,8 +42,7 @@ QTYPE_LABELS = {0: "Kprim", 1: "Multiple Choice", 2: "Single Choice"}
 # Cabeçalho exato do note type AllInOne (kprim, mc, sc)
 CSV_HEADER = ["Text", "Q_1", "Q_2", "Q_3", "Q_4", "Q_5", "Answers", "QType", "Tags"]
 
-SYSTEM_PROMPT = """\
-Você é um especialista em criar flashcards de alta qualidade para o Anki usando o add-on AllInOne (kprim, mc, sc).
+SYSTEM_PROMPT = """Você é um especialista em criar flashcards de alta qualidade para o Anki usando o add-on AllInOne (kprim, mc, sc).
 
 Dado um conteúdo de estudo, você deve gerar flashcards no formato JSON descrito abaixo.
 
@@ -62,6 +61,18 @@ REGRAS PARA BONS FLASHCARDS:
 - Evite alternativas como "Todas as anteriores" ou "Nenhuma das anteriores".
 - Escreva no mesmo idioma do material recebido.
 
+DISTRIBUIÇÃO DA RESPOSTA CORRETA — REGRA OBRIGATÓRIA:
+- A posição da alternativa correta DEVE variar entre os cards do lote.
+- Distribua de forma equilibrada: aproximadamente 25% dos cards com resposta em q1,
+  25% em q2, 25% em q3 e 25% em q4.
+- NUNCA coloque a resposta correta sempre em q1. Isso tornaria os flashcards inúteis
+  para estudo, pois o aluno memorizaria a posição e não o conteúdo.
+- Exemplo de distribuição para 4 cards:
+    card 1: "answers": "1 0 0 0"  (correta em q1)
+    card 2: "answers": "0 1 0 0"  (correta em q2)
+    card 3: "answers": "0 0 1 0"  (correta em q3)
+    card 4: "answers": "0 0 0 1"  (correta em q4)
+
 FORMATO DE SAÍDA — responda SOMENTE com JSON válido, sem markdown, sem texto extra:
 {
   "cards": [
@@ -72,7 +83,7 @@ FORMATO DE SAÍDA — responda SOMENTE com JSON válido, sem markdown, sem texto
       "q3": "Alternativa C",
       "q4": "Alternativa D",
       "q5": "",
-      "answers": "1 0 0 0",
+      "answers": "0 1 0 0",
       "qtype": 2
     }
   ]
