@@ -115,7 +115,7 @@ def extract_text(path: Path) -> str:
 
 
 # ── Chamada à Claude API ───────────────────────────────────────────────────────
-def generate_cards(content: str, num_cards: int, qtype: int, api_key: str) -> list[dict]:
+def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model: str = "claude-haiku-4-5-20251001") -> list[dict]:
     client = anthropic.Anthropic(api_key=api_key)
 
     # Trunca conteúdo muito longo para não estourar o contexto
@@ -142,9 +142,9 @@ def generate_cards(content: str, num_cards: int, qtype: int, api_key: str) -> li
         Gere os {num_cards} flashcards agora em JSON.
     """).strip()
 
-    print(f"[api] Gerando {num_cards} flashcards com Claude...")
+    print(f"[api] Gerando {num_cards} flashcards com {model}...")
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model=model,
         max_tokens=4096,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}]
@@ -226,6 +226,8 @@ def main():
                         help="Arquivo de saída .csv (padrão: mesmo nome do input com sufixo _anki.csv)")
     parser.add_argument("--api-key", default=None,
                         help="Chave da API Anthropic (ou defina a variável ANTHROPIC_API_KEY)")
+    parser.add_argument("--model", default="claude-haiku-4-5-20251001",
+                        help="Modelo Claude a usar (padrão: claude-haiku-4-5-20251001). Use 'claude-sonnet-4-20250514' para material mais complexo.")
     args = parser.parse_args()
 
     # Valida input
@@ -246,7 +248,7 @@ def main():
     content = extract_text(args.input)
     print(f"[info] Conteúdo extraído: {len(content):,} caracteres")
 
-    cards = generate_cards(content, args.num_cards, args.qtype, api_key)
+    cards = generate_cards(content, args.num_cards, args.qtype, api_key, args.model)
     print(f"[info] {len(cards)} cards gerados pela API")
 
     cards_to_csv(cards, output, args.tags, args.deck)
