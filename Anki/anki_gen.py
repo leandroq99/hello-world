@@ -61,6 +61,14 @@ REGRAS PARA BONS FLASHCARDS:
 - Evite alternativas como "Todas as anteriores" ou "Nenhuma das anteriores".
 - Escreva no mesmo idioma do material recebido.
 
+TAMANHO DAS ALTERNATIVAS — REGRA CRÍTICA ANTI-VIÉS:
+- Todas as alternativas (corretas e incorretas) devem ter tamanho similar entre si.
+- NUNCA escreva a alternativa correta com mais palavras ou mais detalhes que as incorretas.
+- Se a alternativa correta for longa e detalhada, torne as incorretas igualmente longas e detalhadas.
+- Se as incorretas forem curtas, torne a correta igualmente curta.
+- O aluno NÃO deve conseguir identificar a resposta correta pelo tamanho ou nível de detalhe da alternativa.
+- Revise mentalmente: "Se eu cobrir o campo 'answers', consigo adivinhar a correta pelo tamanho?" — se sim, reescreva.
+
 DISTRIBUIÇÃO DA RESPOSTA CORRETA — REGRA OBRIGATÓRIA:
 - A posição da alternativa correta DEVE variar entre os cards do lote.
 - Distribua de forma equilibrada: aproximadamente 25% dos cards com resposta em q1,
