@@ -139,8 +139,10 @@ def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model
 
     user_prompt = textwrap.dedent(f"""
         Analise o conteúdo abaixo e gere exatamente {num_cards} flashcards.
-        Tipo de questão preferencial: {QTYPE_LABELS[qtype]} (qtype={qtype})
-        
+
+        TIPO DE QUESTÃO OBRIGATÓRIO: {QTYPE_LABELS[qtype]} — use "qtype": {qtype} em TODOS os cards, sem exceção.
+        {"IMPORTANTE: qtype=2 significa Single Choice — o aluno seleciona UMA alternativa correta. NÃO use qtype=0 (Kprim/yes-no)." if qtype == 2 else ""}
+
         Cubra os conceitos mais importantes do material, priorizando:
         1. Definições e conceitos-chave
         2. Diferenças entre termos similares
@@ -151,8 +153,8 @@ def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model
         ───────────────────────────────────
         {content}
         ───────────────────────────────────
-        
-        Gere os {num_cards} flashcards agora em JSON.
+
+        Gere os {num_cards} flashcards agora em JSON. Lembre: qtype={qtype} em TODOS os cards.
     """).strip()
 
     print(f"[api] Gerando {num_cards} flashcards com {model}...")
@@ -179,7 +181,7 @@ def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model
 
 
 # ── Geração do CSV ─────────────────────────────────────────────────────────────
-def cards_to_csv(cards: list[dict], output_path: Path, tags: str, deck: str):
+def cards_to_csv(cards: list[dict], output_path: Path, tags: str, deck: str, requested_qtype: int = 2):
     with open(output_path, "w", newline="", encoding="utf-8") as f:
         # Cabeçalho especial que o Anki usa para identificar deck e note type
         f.write(f"#separator:Comma\n")
@@ -199,6 +201,10 @@ def cards_to_csv(cards: list[dict], output_path: Path, tags: str, deck: str):
             q5 = card.get("q5", "")
             answers = card.get("answers", "")
             qtype = card.get("qtype", 2)
+
+            # Garante que o qtype seja sempre o solicitado pelo usuário (evita
+            # que o modelo retorne qtype=0/Kprim quando foi pedido Single Choice)
+            qtype = requested_qtype
 
             # Valida número de answers vs alternativas não-vazias
             opts = [o for o in [q1, q2, q3, q4, q5] if o.strip()]
@@ -264,7 +270,7 @@ def main():
     cards = generate_cards(content, args.num_cards, args.qtype, api_key, args.model)
     print(f"[info] {len(cards)} cards gerados pela API")
 
-    cards_to_csv(cards, output, args.tags, args.deck)
+    cards_to_csv(cards, output, args.tags, args.deck, args.qtype)
 
     print()
     print("─" * 50)
