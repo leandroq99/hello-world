@@ -157,10 +157,14 @@ def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model
         Gere os {num_cards} flashcards agora em JSON. Lembre: qtype={qtype} em TODOS os cards.
     """).strip()
 
-    print(f"[api] Gerando {num_cards} flashcards com {model}...")
+    # Calcula max_tokens dinamicamente: ~200 tokens por card + margem de segurança
+    max_tokens = max(4096, num_cards * 200 + 1024)
+    max_tokens = min(max_tokens, 8192)  # limite máximo da API
+
+    print(f"[api] Gerando {num_cards} flashcards com {model} (max_tokens={max_tokens})...")
     response = client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=max_tokens,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}]
     )
@@ -173,11 +177,26 @@ def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model
 
     try:
         data = json.loads(raw)
-    except json.JSONDecodeError as e:
-        print(f"[erro] Resposta da API não é JSON válido:\n{raw[:500]}")
-        raise RuntimeError(f"Falha ao parsear JSON da API: {e}")
-
-    return data.get("cards", [])
+        return data.get("cards", [])
+    except json.JSONDecodeError:
+        # JSON truncado — tenta recuperar os cards completos usando regex
+        print(f"[aviso] JSON truncado (resposta cortada pelo limite de tokens). Tentando recuperar cards parciais...")
+        card_matches = re.findall(
+            r'\{\s*"text":\s*".*?"\s*,\s*"q1":\s*".*?"\s*,\s*"q2":\s*".*?"\s*,\s*"q3":\s*".*?"\s*,\s*"q4":\s*".*?"\s*,\s*"q5":\s*".*?"\s*,\s*"answers":\s*"[01 ]+"\s*,\s*"qtype":\s*\d+\s*\}',
+            raw, re.DOTALL
+        )
+        recovered = []
+        for match in card_matches:
+            try:
+                recovered.append(json.loads(match))
+            except json.JSONDecodeError:
+                continue
+        if recovered:
+            print(f"[aviso] Recuperados {len(recovered)} de {num_cards} cards solicitados.")
+            print(f"[dica] Para gerar todos os {num_cards} cards, tente reduzir --num-cards para lotes menores (ex: 15).")
+            return recovered
+        else:
+            raise RuntimeError(f"Não foi possível recuperar nenhum card do JSON truncado. Reduza --num-cards.")
 
 
 # ── Geração do CSV ─────────────────────────────────────────────────────────────
