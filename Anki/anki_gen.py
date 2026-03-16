@@ -40,7 +40,7 @@ import anthropic
 QTYPE_LABELS = {0: "Kprim", 1: "Multiple Choice", 2: "Single Choice"}
 
 # Cabeçalho exato do note type AllInOne (kprim, mc, sc)
-CSV_HEADER = ["Text", "Q_1", "Q_2", "Q_3", "Q_4", "Q_5", "Answers", "QType", "Tags"]
+CSV_HEADER = ["Text", "Q_1", "Q_2", "Q_3", "Q_4", "Q_5", "Answers", "QType (0=kprim,1=mc,2=sc)", "Tags"]
 
 SYSTEM_PROMPT = """Você é um especialista em criar flashcards de alta qualidade para o Anki usando o add-on AllInOne (kprim, mc, sc).
 
