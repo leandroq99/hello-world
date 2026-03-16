@@ -40,7 +40,7 @@ import anthropic
 QTYPE_LABELS = {0: "Kprim", 1: "Multiple Choice", 2: "Single Choice"}
 
 # Cabeçalho exato do note type AllInOne (kprim, mc, sc)
-CSV_HEADER = ["Text", "Q_1", "Q_2", "Q_3", "Q_4", "Q_5", "Answers", "QType (0=kprim,1=mc,2=sc)", "Tags"]
+CSV_HEADER = ["Text", "Q_1", "Q_2", "Q_3", "Q_4", "Q_5", "Answers", "QType", "Tags"]
 
 SYSTEM_PROMPT = """Você é um especialista em criar flashcards de alta qualidade para o Anki usando o add-on AllInOne (kprim, mc, sc).
 
@@ -189,9 +189,11 @@ def cards_to_csv(cards: list[dict], output_path: Path, tags: str, deck: str, req
         f.write(f"#notetype:AllInOne (kprim, mc, sc)\n")
         if deck:
             f.write(f"#deck:{deck}\n")
-        f.write(f"#columns:{','.join(CSV_HEADER)}\n")
-
         writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+
+        # Escreve o cabeçalho como primeira linha de dados
+        # O Anki usa isso para mapear automaticamente os campos pelo nome
+        writer.writerow(CSV_HEADER)
 
         for card in cards:
             q1 = card.get("q1", "")
