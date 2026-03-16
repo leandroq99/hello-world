@@ -128,7 +128,7 @@ def extract_text(path: Path) -> str:
 
 
 # ── Chamada à Claude API ───────────────────────────────────────────────────────
-def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model: str = "claude-haiku-4-5-20251001") -> list[dict]:
+def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model: str = "claude-haiku-4-5-20251001", scenario: bool = False, scenario_pct: int = 50) -> list[dict]:
     client = anthropic.Anthropic(api_key=api_key)
 
     # Trunca conteúdo muito longo para não estourar o contexto
@@ -136,6 +136,25 @@ def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model
     if len(content) > max_chars:
         print(f"[aviso] Conteúdo truncado para {max_chars} caracteres.")
         content = content[:max_chars] + "\n\n[... conteúdo truncado ...]"
+
+    # Monta instrução de cenário se solicitado
+    if scenario:
+        n_scenario = max(1, round(num_cards * scenario_pct / 100))
+        n_direct   = num_cards - n_scenario
+        scenario_instruction = f"""QUESTÕES DE CENÁRIO — INSTRUÇÃO OBRIGATÓRIA:
+        Dos {num_cards} cards, {n_scenario} devem ser questões baseadas em CENÁRIO e {n_direct} devem ser questões diretas.
+        Questões de cenário seguem este formato:
+        - Começam com uma situação prática e contextualizada (2-4 frases descrevendo um caso real)
+        - Apresentam um personagem ou equipe enfrentando um problema ou decisão
+        - A pergunta pede qual é a melhor ação, próximo passo ou decisão correta
+        - As alternativas são ações/decisões plausíveis, não definições teóricas
+        Exemplo de questão de cenário:
+          "João é gerente de projetos e percebe que dois membros da equipe estão em conflito,
+           impactando as entregas. O patrocinador do projeto está cobrando resultados.
+           Qual deve ser a primeira ação de João de acordo com as boas práticas de gerenciamento?"
+        Questões diretas testam conceitos, definições e fatos do material normalmente."""
+    else:
+        scenario_instruction = ""
 
     user_prompt = textwrap.dedent(f"""
         Analise o conteúdo abaixo e gere exatamente {num_cards} flashcards.
@@ -154,6 +173,7 @@ def generate_cards(content: str, num_cards: int, qtype: int, api_key: str, model
         {content}
         ───────────────────────────────────
 
+        {scenario_instruction}
         Gere os {num_cards} flashcards agora em JSON. Lembre: qtype={qtype} em TODOS os cards.
     """).strip()
 
@@ -276,6 +296,10 @@ def main():
                         help="Chave da API Anthropic (ou defina a variável ANTHROPIC_API_KEY)")
     parser.add_argument("--model", default="claude-haiku-4-5-20251001",
                         help="Modelo Claude a usar (padrão: claude-haiku-4-5-20251001). Use 'claude-sonnet-4-20250514' para material mais complexo.")
+    parser.add_argument("--scenario", action="store_true",
+                        help="Gera questões baseadas em cenário (situações práticas com personagens e contexto real)")
+    parser.add_argument("--scenario-pct", type=int, default=50,
+                        help="Percentual de cards que serão cenários quando --scenario está ativo (padrão: 50)")
     args = parser.parse_args()
 
     # Valida input
@@ -296,7 +320,7 @@ def main():
     content = extract_text(args.input)
     print(f"[info] Conteúdo extraído: {len(content):,} caracteres")
 
-    cards = generate_cards(content, args.num_cards, args.qtype, api_key, args.model)
+    cards = generate_cards(content, args.num_cards, args.qtype, api_key, args.model, args.scenario, args.scenario_pct)
     print(f"[info] {len(cards)} cards gerados pela API")
 
     cards_to_csv(cards, output, args.tags, args.deck, args.qtype)
