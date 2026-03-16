@@ -21,7 +21,8 @@ from pathlib import Path
 
 # ── Dependências opcionais instaladas em runtime ───────────────────────────────
 def ensure_deps():
-    import importlib, subprocess
+    import importlib.util
+    import subprocess
     pkgs = {"pymupdf": "pymupdf", "anthropic": "anthropic"}
     for mod, pkg in pkgs.items():
         if importlib.util.find_spec(mod) is None:
