@@ -23,7 +23,8 @@ from pathlib import Path
 def ensure_deps():
     import importlib.util
     import subprocess
-    pkgs = {"pymupdf": "pymupdf", "anthropic": "anthropic"}
+    # chave = nome do módulo importável, valor = nome do pacote pip
+    pkgs = {"fitz": "pymupdf", "anthropic": "anthropic"}
     for mod, pkg in pkgs.items():
         if importlib.util.find_spec(mod) is None:
             print(f"[setup] Instalando {pkg}...")
