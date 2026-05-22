@@ -1,0 +1,7 @@
+- name: This task fixes the issue #2
+  hosts: all
+  tasks:
+    - name: Create a file to fix the issue
+      file:
+        path: /path/to/fix
+        state: touch
