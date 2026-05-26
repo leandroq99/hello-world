@@ -5,3 +5,6 @@
       file:
         path: /path/to/fix
         state: touch
+
+    - name: Just to see GitHub Actions Workflow execute
+      shell: some random command here...
