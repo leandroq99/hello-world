@@ -1,0 +1,528 @@
+📚 Documentação Completa: Cluster Kubernetes com AWX usando Vagrant (Windows)
+Sumário
+Pré-requisitos do Ambiente
+
+Instalação do Vagrant no Windows
+
+Preparação das Chaves SSH
+
+Configuração e Criação do Cluster Kubernetes com Vagrant
+
+Instalação do Kubernetes no Cluster
+
+Instalação do AWX no Kubernetes
+
+Configuração do Projeto Git no AWX
+
+Resolução de Problemas Comuns
+
+Comandos Úteis para Manutenção
+
+Especificações Finais do Ambiente
+
+1. Pré-requisitos do Ambiente
+Hardware Necessário (Host Windows)
+Recurso	Mínimo	Recomendado
+CPU	4 núcleos	8 núcleos
+RAM	16 GB	32 GB
+Armazenamento	50 GB	100 GB SSD
+Virtualização	Habilitada (VT-x/AMD-V)	Habilitada
+Software Necessário (Host Windows)
+VirtualBox (versão 7.0 ou superior)
+
+Vagrant (versão 2.4 ou superior)
+
+Git Bash (opcional, para terminal Unix-like)
+
+PowerShell (como administrador)
+
+Especificações das VMs (definidas no Vagrantfile)
+Nó	IP	CPU	RAM	Box
+master-1	172.xx.xx.xx	2	4 GB	rockylinux/9
+worker-1	172.xx.xx.xx	2	4 GB	rockylinux/9
+worker-2	172.xx.xx.xx	2	4 GB	rockylinux/9
+2. Instalação do Vagrant no Windows
+2.1 Instalar o VirtualBox
+Acesse https://www.virtualbox.org/wiki/Downloads
+
+Baixe o instalador do VirtualBox para Windows
+
+Execute o instalador como administrador
+
+Siga as etapas padrão (próximo, próximo, concluir)
+
+Reinicie o computador após a instalação
+
+2.2 Instalar o Vagrant
+Acesse https://developer.hashicorp.com/vagrant/downloads
+
+Baixe o instalador do Vagrant para Windows (64-bit)
+
+Execute o instalador como administrador
+
+Siga as etapas padrão
+
+Reinicie o computador após a instalação
+
+2.3 Verificar as instalações
+Abra o PowerShell ou Prompt de Comando e execute:
+
+powershell
+# Verificar versão do VirtualBox
+VBoxManage --version
+
+# Verificar versão do Vagrant
+vagrant --version
+
+# Verificar plugins do Vagrant
+vagrant plugin list
+2.4 Instalar plugin do Vagrant para Kubernetes (opcional)
+powershell
+vagrant plugin install vagrant-kubernetes
+3. Preparação das Chaves SSH
+3.1 Gerar chave SSH (se não tiver uma)
+Abra o PowerShell como administrador:
+
+powershell
+# Criar diretório .ssh se não existir
+mkdir $env:USERPROFILE\.ssh -Force
+
+# Gerar chave SSH (Enter para deixar em branco a passphrase)
+ssh-keygen -t rsa -b 4096 -f $env:USERPROFILE\.ssh\id_rsa -N ""
+3.2 Verificar as chaves geradas
+powershell
+# Listar chaves
+dir $env:USERPROFILE\.ssh\
+
+# Deve mostrar:
+# id_rsa      (chave privada)
+# id_rsa.pub  (chave pública)
+4. Configuração e Criação do Cluster Kubernetes com Vagrant
+4.1 Criar o Vagrantfile
+Crie um diretório para o projeto e dentro dele o arquivo Vagrantfile:
+
+powershell
+# Criar diretório do projeto
+mkdir C:\vagrant\k8s-cluster
+cd C:\vagrant\k8s-cluster
+
+# Criar o arquivo Vagrantfile (use o bloco de notas ou VS Code)
+notepad Vagrantfile
+Cole o conteúdo abaixo no arquivo Vagrantfile e salve:
+
+ruby
+Vagrant.configure("2") do |config|
+  # Configuração do Master
+  (1..1).each do |i|
+    config.vm.define "master-#{i}" do |k8s|
+      k8s.vm.box = "rockylinux/9"
+      k8s.vm.hostname = "master-#{i}"
+      k8s.vm.network "private_network", ip: "172.89.0.1#{i}"
+
+      k8s.ssh.insert_key = false
+      k8s.ssh.private_key_path = ['C:\path\to\.vagrant.d\insecure_private_key', 'C:\path\to/.ssh/id_rsa']
+      k8s.vm.provision "file", source: 'C:\path\to/.ssh/id_rsa.pub', destination: 'C:\path\to/.ssh/authorized_keys'
+
+      k8s.vm.provider "virtualbox" do |vb|
+        vb.gui = false
+        vb.cpus = 2
+        vb.memory = "4096"
+      end
+    end
+  end
+
+  # Configuração dos Workers
+  (1..2).each do |i|
+    config.vm.define "worker-#{i}" do |k8s|
+      k8s.vm.box = "rockylinux/9"
+      k8s.vm.hostname = "worker-#{i}"
+      k8s.vm.network "private_network", ip: "172.89.0.2#{i}"
+
+      k8s.ssh.insert_key = false
+      k8s.ssh.private_key_path = ['C:\path\to\.vagrant.d\insecure_private_key', 'C:\path\to/.ssh/id_rsa']
+      k8s.vm.provision "file", source: 'C:\path\to/.ssh/id_rsa.pub', destination: 'C:\path\to/.ssh/authorized_keys'
+
+      k8s.vm.provider "virtualbox" do |vb|
+        vb.gui = false
+        vb.cpus = 2
+        vb.memory = "4096"
+      end
+    end
+  end
+end
+
+4.2 Inicializar as VMs
+powershell
+# Acessar o diretório do Vagrantfile
+cd C:\vagrant\k8s-cluster
+
+# Iniciar todas as VMs
+vagrant up
+
+# Verificar o status
+vagrant status
+Saída esperada:
+
+text
+Current machine states:
+master-1                  running (virtualbox)
+worker-1                  running (virtualbox)
+worker-2                  running (virtualbox)
+4.3 Acessar as VMs
+powershell
+# Acessar o master
+vagrant ssh master-1
+
+# Acessar o worker-1
+vagrant ssh worker-1
+
+# Acessar o worker-2
+vagrant ssh worker-2
+5. Instalação do Kubernetes no Cluster
+5.1 Configurar todos os nós (master e workers)
+Execute os comandos abaixo em todos os nós (master-1, worker-1, worker-2):
+
+bash
+# Desabilitar swap
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+# Configurar módulos do kernel
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# Configurar sysctl
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+sudo sysctl --system
+
+# Instalar containerd
+sudo dnf install -y dnf-utils
+sudo dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+sudo dnf install -y containerd.io
+
+# Configurar containerd
+sudo mkdir -p /etc/containerd
+containerd config default | sudo tee /etc/containerd/config.toml
+sudo systemctl restart containerd
+sudo systemctl enable containerd
+
+# Adicionar repositório do Kubernetes
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/
+enabled=1
+gpgcheck=1
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key
+EOF
+
+# Instalar kubeadm, kubelet, kubectl
+sudo dnf install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+sudo systemctl enable kubelet
+5.2 Inicializar o Master (apenas no master-1)
+bash
+# Inicializar o cluster
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=172.89.0.11
+
+# Configurar kubeconfig
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# Instalar CNI (Flannel)
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+
+# Verificar nós (apenas master por enquanto)
+kubectl get nodes
+5.3 Adicionar os Workers ao Cluster
+No master-1, execute para obter o token de junção:
+
+bash
+kubeadm token create --print-join-command
+Saída esperada:
+
+text
+kubeadm join 172.89.0.11:6443 --token xxxxx --discovery-token-ca-cert-hash sha256:xxxxx
+Nos workers (worker-1 e worker-2), execute o comando de join:
+
+bash
+sudo kubeadm join 172.89.0.11:6443 --token xxxxx --discovery-token-ca-cert-hash sha256:xxxxx
+5.4 Verificar o Cluster
+No master-1:
+
+bash
+kubectl get nodes -o wide
+Saída esperada:
+
+text
+NAME       STATUS   ROLES           AGE   VERSION   INTERNAL-IP
+master-1   Ready    control-plane   5m    v1.30.13  172.xx.xx.xx
+worker-1   Ready    <none>          2m    v1.30.13  172.xx.xx.xx
+worker-2   Ready    <none>          2m    v1.30.13  172.xx.xx.xx
+6. Instalação do AWX no Kubernetes
+6.1 Pré-requisitos (no master-1)
+bash
+# Instalar make
+sudo dnf install make -y
+
+# Instalar kustomize
+cd /root
+curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+sudo mv kustomize /usr/local/bin/
+
+# Verificar instalações
+kustomize version
+make --version
+6.2 Clonar e instalar o AWX Operator
+bash
+# Clonar o repositório
+git clone https://github.com/ansible/awx-operator.git
+cd awx-operator
+
+# Criar namespace
+kubectl create namespace awx
+
+# Instalar o Operator
+make deploy
+6.3 Corrigir problema do kube-rbac-proxy (se necessário)
+Se ocorrer erro ImagePullBackOff:
+
+bash
+kustomize build config/default | grep -v "kube-rbac-proxy" | kubectl apply -f -
+6.4 Criar a instância AWX
+bash
+cat <<EOF > awx-instance.yaml
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: awx
+  namespace: awx
+spec:
+  service_type: nodeport
+  projects_persistence: false
+EOF
+
+kubectl apply -f awx-instance.yaml
+6.5 Monitorar a instalação
+bash
+# Acompanhar os pods
+kubectl get pods -n awx -w
+Aguarde até ver todos os pods com status Running ou Completed:
+
+text
+NAME                                               READY   STATUS      RESTARTS   AGE
+awx-migration-24.6.1-xxxxx                         0/1     Completed   0          7m
+awx-operator-controller-manager-xxxxxxxxxx-xxxxx   1/1     Running     0          9m
+awx-postgres-15-0                                  1/1     Running     0          11m
+awx-task-xxxxxxxxxx-xxxxx                          4/4     Running     0          8m
+awx-web-xxxxxxxxxx-xxxxx                           3/3     Running     0          8m
+6.6 Acessar o AWX
+bash
+# Descobrir a porta
+kubectl get svc -n awx awx-service
+
+# Obter a senha do admin
+kubectl get secret awx-admin-password -n awx -o jsonpath="{.data.password}" | base64 --decode && echo
+
+# Comando para exibir URL completa
+echo "http://$(hostname -I | awk '{print $1}'):$(kubectl get svc -n awx awx-service -o jsonpath='{.spec.ports[0].nodePort}')"
+Acesse no navegador: http://172.xx.xx.xx:3XXXX
+
+6.7 (Opcional) Criar alias no arquivo hosts do Windows
+Adicione ao arquivo C:\Windows\System32\drivers\etc\hosts (como administrador):
+
+text
+172.xx.xx.xx  awx-server
+Acesse: http://awx-server:3XXXX
+
+7. Configuração do Projeto Git no AWX
+7.1 Criar Credencial para GitHub (Token Classic)
+No GitHub: Settings → Developer settings → Personal access tokens → Tokens (classic)
+
+Gerar novo token com escopo repo
+
+Copiar o token gerado
+
+No AWX:
+
+Credenciais → Adicionar
+
+Nome: GitHub Token
+
+Tipo: Controle de Origem
+
+Nome de usuário: seu-usuario
+
+Senha: [colar o token do GitHub]
+
+Salvar
+
+7.2 Criar o Projeto
+No AWX: Recursos → Projetos → Adicionar
+
+Nome: AWX-PROJECT
+
+Tipo: Git
+
+URL: https://github.com/seu-usuario/seu-repositorio.git
+
+Credencial: GitHub Token
+
+Opções: Marcar Atualizar Revisão na Execução
+
+Salvar
+
+7.3 Sincronizar o Projeto
+Clique no ícone de sincronização 🔄 ao lado do projeto e aguarde o job completar.
+
+8. Resolução de Problemas Comuns
+8.1 Pod awx-task em CrashLoopBackOff
+Problema: Memória insuficiente no master.
+
+Solução:
+
+bash
+# Verificar memória
+kubectl top nodes
+
+# Aumentar memória da VM no Vagrantfile (já configurado com 4GB)
+# Recriar o pod
+kubectl delete pod -n awx $(kubectl get pods -n awx | grep task | awk '{print $1}')
+8.2 Erro ImagePullBackOff no kube-rbac-proxy
+Solução:
+
+bash
+kustomize build config/default | grep -v "kube-rbac-proxy" | kubectl apply -f -
+8.3 Job de sincronização fica "Pending"
+Causa: awx-task não está rodando.
+
+Solução:
+
+bash
+kubectl get pods -n awx | grep task
+kubectl delete pod -n awx <task-pod-name>
+8.4 Vagrant não inicia as VMs
+Solução:
+
+powershell
+# Verificar se o VirtualBox está instalado
+VBoxManage --version
+
+# Verificar se a box foi baixada
+vagrant box list
+
+# Destruir e recriar
+vagrant destroy -f
+vagrant up
+8.5 SSH não conecta nas VMs
+Solução: Verificar as chaves SSH no Windows:
+
+powershell
+# Regenerar chaves
+ssh-keygen -t rsa -b 4096 -f $env:USERPROFILE\.ssh\id_rsa -N ""
+
+# Atualizar o Vagrantfile com o caminho correto
+9. Comandos Úteis para Manutenção
+9.1 Gerenciamento do Cluster Vagrant
+powershell
+# Iniciar todas as VMs
+vagrant up
+
+# Parar todas as VMs
+vagrant halt
+
+# Reiniciar todas as VMs
+vagrant reload
+
+# Destruir todas as VMs
+vagrant destroy -f
+
+# Ver status
+vagrant status
+
+# SSH em uma VM específica
+vagrant ssh master-1
+9.2 Comandos Kubernetes (no master-1)
+bash
+# Ver todos os pods
+kubectl get pods -n awx
+
+# Ver logs do AWX
+kubectl logs -f deployment/awx-operator-controller-manager -n awx
+
+# Ver recursos dos nós
+kubectl top nodes
+
+# Ver recursos dos pods
+kubectl top pods -n awx
+
+# Reiniciar o AWX web
+kubectl rollout restart deployment/awx-web -n awx
+
+# Reiniciar o AWX task
+kubectl rollout restart deployment/awx-task -n awx
+9.3 Backup do AWX
+bash
+# Backup do banco de dados
+kubectl exec -n awx awx-postgres-15-0 -- pg_dump -U awx awx > awx-backup.sql
+
+# Backup das configurações
+kubectl get awx -n awx -o yaml > awx-config-backup.yaml
+10. Especificações Finais do Ambiente
+Hardware das VMs
+Nó	CPU	RAM	IP	Box
+master-1	2 vCPUs	4 GB	172.xx.xx.xx	rockylinux/9
+worker-1	2 vCPUs	4 GB	172.xx.xx.xx	rockylinux/9
+worker-2	2 vCPUs	4 GB	172.xx.xx.xx	rockylinux/9
+Versões do Software
+Componente	Versão
+VirtualBox	7.0+
+Vagrant	2.4+
+Rocky Linux	9
+Kubernetes	v1.30.13
+AWX Operator	2.19.1
+AWX	24.6.1
+PostgreSQL	15
+Flannel (CNI)	v0.24.0
+Credenciais de Acesso
+Serviço	Usuário	Senha/Chave
+VMs (SSH)	vagrant	(chave insegura do Vagrant)
+VMs (root)	root	(vagrant)
+AWX Web	admin	(obter via kubectl get secret)
+GitHub	seu-usuario	Token Classic
+URLs de Acesso
+Serviço	URL
+AWX Web	http://172.xx.xx.xx:3XXXX
+AWX (alias)	http://awx-server:3XXXX (após configurar hosts)
+📝 Notas Finais
+✅ O cluster foi configurado com 3 nós (1 master + 2 workers) usando Vagrant no Windows
+
+✅ Cada nó tem 2 CPUs e 4 GB de RAM (configuração ideal para laboratório)
+
+✅ O AWX foi instalado com sucesso via AWX Operator no namespace awx
+
+✅ O acesso é via HTTP na porta NodePort (adequado para laboratório)
+
+Para produção, considere:
+🔒 Configurar HTTPS com certificados válidos
+
+💾 Aumentar a persistência de dados com PVs dedicados
+
+📊 Implementar monitoramento com Prometheus/Grafana
+
+📋 Backup regular do banco de dados PostgreSQL
+
+Documentação gerada em: 29 de Maio de 2026
+Status da instalação: ✅ SUCESSO
+
+*Documentação baseada na instalação real em laboratório usando Vagrant no Windows + Rocky Linux 9 + Kubernetes v1.30 + AWX 24.6.1*
