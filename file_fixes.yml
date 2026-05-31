@@ -1,0 +1,10 @@
+- name: This task fixes the issue #2
+  hosts: all
+  tasks:
+    - name: Create a file to fix the issue
+      file:
+        path: /path/to/fix
+        state: touch
+
+    - name: Just to see GitHub Actions Workflow execute
+      shell: some random command here...
