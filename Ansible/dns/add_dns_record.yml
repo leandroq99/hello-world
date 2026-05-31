@@ -1,0 +1,32 @@
+- name: Add DNS Record
+  hosts: dns-server
+  become: true
+  vars:
+    dns_zone: "lab.local"
+    dns_reverse_zone: "89.172.in-addr.arpa"
+    # Essas duas variáveis virão do Survey
+    # new_hostname: "prometheus"
+    # new_ip: "172.89.0.32"
+  tasks:
+    - name: Adicionar registro A na zona direta
+      lineinfile:
+        path: "/var/named/{{ dns_zone }}.zone"
+        line: "{{ new_hostname }}    IN  A   {{ new_ip }}"
+        state: present
+    - name: Adicionar registro PTR na zona reversa
+      lineinfile:
+        path: "/var/named/{{ dns_zone }}.rev"
+        line: "{{ new_ip.split('.')[-1] }}    IN  PTR    {{ new_hostname }}.{{ dns_zone }}."
+        state: present
+    - name: Atualizar o Serial da zona direta
+      replace:
+        path: "/var/named/{{ dns_zone }}.zone"
+        regexp: '(\s+)(\d+)(\s+; Serial)'
+        replace: '\g<1>{{ ansible_date_time.epoch }}\3'
+    - name: Atualizar o Serial da zona reversa
+      replace:
+        path: "/var/named/{{ dns_zone }}.rev"
+        regexp: '(\s+)(\d+)(\s+; Serial)'
+        replace: '\g<1>{{ ansible_date_time.epoch }}\3'
+    - name: Recarregar o BIND
+      command: rndc reload

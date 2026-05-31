@@ -1,0 +1,15 @@
+- name: Configure DNS Client
+  hosts: dns-clients
+  become: true
+  vars:
+    dns_server_ip: "172.89.0.50"
+    dns_search_domain: "lab.local"
+  tasks:
+    - name: Configurar DNS server na interface eth1
+      command: nmcli con mod "System eth1" ipv4.dns "{{ dns_server_ip }}"
+    - name: Configurar prioridade do DNS
+      command: nmcli con mod "System eth1" ipv4.dns-priority -1
+    - name: Configurar search domain
+      command: nmcli con mod "System eth1" ipv4.dns-search "{{ dns_search_domain }}"
+    - name: Aplicar as configurações
+      command: nmcli con up "System eth1"
