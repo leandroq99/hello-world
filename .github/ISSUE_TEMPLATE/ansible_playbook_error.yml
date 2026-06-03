@@ -1,0 +1,74 @@
+name: "🛠️ Ansible Playbook - Erro de execução"
+description: "Reporte uma falha ocorrida durante a execução de um playbook Ansible"
+title: "[ANSIBLE ERROR]: "
+labels: ["bug", "ansible", "triage"]
+assignees:
+  - octocat
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐞 Reporte de erro no Ansible
+        Obrigado por reportar! Preencha os campos abaixo para nos ajudar a diagnosticar o problema.
+
+  - type: input
+    id: playbook
+    attributes:
+      label: "📄 Playbook que falhou"
+      description: "Caminho relativo do playbook executado"
+      placeholder: "ex: playbooks/deploy-app.yml"
+    validations:
+      required: true
+
+  - type: input
+    id: task_name
+    attributes:
+      label: "⚙️ Nome da task com erro"
+      description: "Nome da task que apresentou falha"
+      placeholder: "ex: Install required packages"
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_message
+    attributes:
+      label: "❌ Mensagem de erro resumida"
+      description: "Copie a mensagem principal do erro"
+      placeholder: "fatal: [server01]: FAILED! => {...}"
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: full_output
+    attributes:
+      label: "📜 Output completo do Ansible"
+      description: "Cole aqui a saída completa do playbook (incluindo o erro)"
+      render: shell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: target_host
+    attributes:
+      label: "🖥️ Ambiente alvo"
+      description: "O playbook foi executado contra qual ambiente?"
+      options:
+        - "Localhost"
+        - "VM (Linux)"
+        - "Container (Docker/Podman)"
+        - "Nuvem (AWS, Azure, GCP)"
+        - "Outro"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: "✅ Verificações"
+      description: "Confirme antes de enviar"
+      options:
+        - label: "Eu verifiquei que não existe outra issue igual a esta"
+          required: true
+        - label: "Eu removi informações sensíveis (senhas, chaves, IPs internos)"
+          required: true
