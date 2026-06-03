@@ -1,4 +1,4 @@
-name: "🛠️ Ansible Playbook - Erro de execução"
+name: "Ansible Playbook - Erro de execução"
 description: "Reporte uma falha ocorrida durante a execução de um playbook Ansible"
 title: "[ANSIBLE ERROR]: "
 labels: ["bug", "ansible", "triage"]
