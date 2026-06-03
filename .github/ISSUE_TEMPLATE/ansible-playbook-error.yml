@@ -14,8 +14,8 @@ body:
   - type: input
     id: playbook
     attributes:
-      label: 📄 Playbook que falhou
-      description: Caminho relativo do playbook executado
+      label: "📄 Playbook que falhou"
+      description: "Caminho relativo do playbook executado"
       placeholder: "ex: playbooks/deploy-app.yml"
     validations:
       required: true
@@ -23,8 +23,8 @@ body:
   - type: input
     id: task_name
     attributes:
-      label: ⚙️ Nome da task com erro
-      description: Nome da task (ex: "Tarefa: Instalar pacotes")
+      label: "⚙️ Nome da task com erro"
+      description: "Nome da task que apresentou falha"
       placeholder: "ex: Install required packages"
     validations:
       required: true
@@ -32,10 +32,9 @@ body:
   - type: textarea
     id: error_message
     attributes:
-      label: ❌ Mensagem de erro resumida
-      description: Copie a mensagem principal do erro (sem o output completo)
-      placeholder: |
-        fatal: [server01]: FAILED! => {"changed": false, "msg": "Package not found"}
+      label: "❌ Mensagem de erro resumida"
+      description: "Copie a mensagem principal do erro"
+      placeholder: "fatal: [server01]: FAILED! => {...}"
       render: shell
     validations:
       required: true
@@ -43,10 +42,8 @@ body:
   - type: textarea
     id: full_output
     attributes:
-      label: 📜 Output completo do Ansible
-      description: Cole aqui a saída completa do playbook (com o erro)
-      placeholder: |
-        Cole aqui o output completo, incluindo a task falha e o traceback.
+      label: "📜 Output completo do Ansible"
+      description: "Cole aqui a saída completa do playbook (incluindo o erro)"
       render: shell
     validations:
       required: true
@@ -54,15 +51,15 @@ body:
   - type: dropdown
     id: ansible_version
     attributes:
-      label: 🧩 Versão do Ansible
-      description: Qual versão do Ansible foi utilizada?
+      label: "🧩 Versão do Ansible"
+      description: "Qual versão do Ansible foi utilizada?"
       options:
-        - 2.15.x
-        - 2.16.x
-        - 2.17.x
-        - 10.x (awx-ee)
-        - 11.x (awx-ee)
-        - Outra (especifique no campo abaixo)
+        - "2.15.x"
+        - "2.16.x"
+        - "2.17.x"
+        - "10.x (awx-ee)"
+        - "11.x (awx-ee)"
+        - "Outra (especifique no campo abaixo)"
     validations:
       required: true
 
@@ -70,31 +67,31 @@ body:
     id: other_version
     attributes:
       label: "🔧 Outra versão"
-      description: Se selecionou "Outra" no campo acima, informe aqui
+      description: "Se selecionou 'Outra' no campo acima, informe aqui"
       placeholder: "ex: 9.5.0"
 
   - type: dropdown
     id: target_host
     attributes:
-      label: 🖥️ Ambiente alvo
-      description: O playbook foi executado contra qual ambiente?
+      label: "🖥️ Ambiente alvo"
+      description: "O playbook foi executado contra qual ambiente?"
       options:
-        - Localhost
-        - VM (Linux)
-        - VM (Windows)
-        - Container (Docker/Podman)
-        - Nuvem (AWS, Azure, GCP)
-        - Outro
+        - "Localhost"
+        - "VM (Linux)"
+        - "VM (Windows)"
+        - "Container (Docker/Podman)"
+        - "Nuvem (AWS, Azure, GCP)"
+        - "Outro"
     validations:
       required: true
 
   - type: checkboxes
     id: terms
     attributes:
-      label: ✅ Verificações
-      description: Confirme antes de enviar
+      label: "✅ Verificações"
+      description: "Confirme antes de enviar"
       options:
-        - label: Eu verifiquei que não existe outra issue igual a esta
+        - label: "Eu verifiquei que não existe outra issue igual a esta"
           required: true
-        - label: Eu removi informações sensíveis (senhas, chaves, IPs internos)
+        - label: "Eu removi informações sensíveis (senhas, chaves, IPs internos)"
           required: true
