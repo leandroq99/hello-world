@@ -49,28 +49,6 @@ body:
       required: true
 
   - type: dropdown
-    id: ansible_version
-    attributes:
-      label: "🧩 Versão do Ansible"
-      description: "Qual versão do Ansible foi utilizada?"
-      options:
-        - "2.15.x"
-        - "2.16.x"
-        - "2.17.x"
-        - "10.x (awx-ee)"
-        - "11.x (awx-ee)"
-        - "Outra (especifique no campo abaixo)"
-    validations:
-      required: true
-
-  - type: input
-    id: other_version
-    attributes:
-      label: "🔧 Outra versão"
-      description: "Se selecionou 'Outra' no campo acima, informe aqui"
-      placeholder: "ex: 9.5.0"
-
-  - type: dropdown
     id: target_host
     attributes:
       label: "🖥️ Ambiente alvo"
@@ -78,7 +56,6 @@ body:
       options:
         - "Localhost"
         - "VM (Linux)"
-        - "VM (Windows)"
         - "Container (Docker/Podman)"
         - "Nuvem (AWS, Azure, GCP)"
         - "Outro"
