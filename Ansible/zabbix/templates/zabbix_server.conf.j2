@@ -1,0 +1,23 @@
+# Zabbix Server Configuration
+DBHost={{ zabbix_db_host }}
+DBName={{ zabbix_db_name }}
+DBUser={{ zabbix_db_user }}
+DBPassword={{ zabbix_db_password }}
+
+# Performance
+StartPollers=5
+StartPingers=1
+StartTrappers=5
+StartDiscoverers=1
+StartHTTPPollers=1
+
+# Logs
+LogFile=/var/log/zabbix/zabbix_server.log
+LogFileSize=10
+DebugLevel=3
+
+# Outros
+ListenPort=10051
+Timeout=4
+AlertScriptsPath=/usr/lib/zabbix/alertscripts
+ExternalScripts=/usr/lib/zabbix/externalscripts
