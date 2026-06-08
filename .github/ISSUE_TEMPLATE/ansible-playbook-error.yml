@@ -10,7 +10,6 @@ body:
       value: |
         ## 🐞 Reporte de erro no Ansible
         Obrigado por reportar! Preencha os campos abaixo para nos ajudar a diagnosticar o problema.
-
   - type: input
     id: playbook
     attributes:
@@ -19,7 +18,6 @@ body:
       placeholder: "ex: playbooks/deploy-app.yml"
     validations:
       required: true
-
   - type: input
     id: task_name
     attributes:
@@ -28,16 +26,14 @@ body:
       placeholder: "ex: Install required packages"
     validations:
       required: true
-
   - type: input
     id: incident_number
     attributes:
       label: "🎫 Número do incidente"
       description: "Número do incidente ou ticket associado"
-      placeholder: "ex: INC-123456 ou TICKET-789"
+      placeholder: "ex: INC00000000123456"
     validations:
       required: true
-
   - type: input
     id: affected_servers
     attributes:
@@ -46,7 +42,6 @@ body:
       placeholder: "ex: web-server-01, app-server-02 ou 192.168.1.10, 192.168.1.11"
     validations:
       required: true
-
   - type: textarea
     id: full_output
     attributes:
@@ -55,7 +50,6 @@ body:
       render: shell
     validations:
       required: true
-
   - type: checkboxes
     id: terms
     attributes:
