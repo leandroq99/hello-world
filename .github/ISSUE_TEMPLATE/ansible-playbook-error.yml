@@ -29,13 +29,21 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: error_message
+  - type: input
+    id: incident_number
     attributes:
-      label: "❌ Mensagem de erro resumida"
-      description: "Copie a mensagem principal do erro"
-      placeholder: "fatal: [server01]: FAILED! => {...}"
-      render: shell
+      label: "🎫 Número do incidente"
+      description: "Número do incidente ou ticket associado"
+      placeholder: "ex: INC-123456 ou TICKET-789"
+    validations:
+      required: true
+
+  - type: input
+    id: affected_servers
+    attributes:
+      label: "🖥️ Servidor(es) afetado(s)"
+      description: "Hostname ou IP do(s) servidor(es) que apresentaram falha"
+      placeholder: "ex: web-server-01, app-server-02 ou 192.168.1.10, 192.168.1.11"
     validations:
       required: true
 
@@ -45,20 +53,6 @@ body:
       label: "📜 Output completo do Ansible"
       description: "Cole aqui a saída completa do playbook (incluindo o erro)"
       render: shell
-    validations:
-      required: true
-
-  - type: dropdown
-    id: target_host
-    attributes:
-      label: "🖥️ Ambiente alvo"
-      description: "O playbook foi executado contra qual ambiente?"
-      options:
-        - "Localhost"
-        - "VM (Linux)"
-        - "Container (Docker/Podman)"
-        - "Nuvem (AWS, Azure, GCP)"
-        - "Outro"
     validations:
       required: true
 
