@@ -1,0 +1,26 @@
+name: Atualizar Projeto AWX via API
+on:
+  push:
+    branches:
+      - main
+      - leandroq99-patch-1
+jobs:
+  update-awx:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar atualização do projeto AWX
+        run: |-
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.AWX_OAUTH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.AWX_HOST }}/api/v2/projects/9/update/")
+
+          # Verifica se a resposta contém um ID (indica sucesso)
+          if echo "$RESPONSE" | grep -q '"id"'; then
+            echo "✅ Atualização do projeto disparada com sucesso!"
+            echo "Detalhes: $RESPONSE"
+          else
+            echo "❌ Falha ao disparar atualização"
+            echo "Resposta: $RESPONSE"
+            exit 1
+          fi
