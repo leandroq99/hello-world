@@ -1,0 +1,72 @@
+- name: Instalar e configurar autenticação LDAP nos clients
+  hosts: all
+  become: yes
+  vars:
+    ldap_server: "ipa-ldap.lab.local"
+    ldap_base_dn: "dc=ipa,dc=local"
+    ldap_bind_dn: "cn=admin,dc=ipa,dc=local"
+    # ldap_bind_pw deve ser passada via extra_vars
+  tasks:
+    - name: Instalar pacotes LDAP
+      dnf:
+        name:
+          - openldap-clients
+          - nss-pam-ldapd
+          - authselect
+        state: present
+    - name: Configurar /etc/openldap/ldap.conf
+      copy:
+        dest: /etc/openldap/ldap.conf
+        content: |
+          BASE {{ ldap_base_dn }}
+          URI ldap://{{ ldap_server }}
+          TLS_REQCERT never
+    - name: Configurar /etc/nslcd.conf
+      no_log: true
+      copy:
+        dest: /etc/nslcd.conf
+        content: |
+          uid nslcd
+          gid nslcd
+          uri ldap://{{ ldap_server }}
+          base {{ ldap_base_dn }}
+          binddn {{ ldap_bind_dn }}
+          bindpw {{ ldap_bind_pw }}
+          ssl no
+          tls_reqcert never
+          filter passwd (objectClass=posixAccount)
+          filter shadow (objectClass=posixAccount)
+          filter group (objectClass=posixGroup)
+          map passwd uidNumber uidNumber
+          map passwd gidNumber gidNumber
+      register: nslcd_config
+    - name: Configuração do nslcd aplicada
+      debug:
+        msg: "✅ /etc/nslcd.conf configurado com sucesso!"
+      when: nslcd_config.changed
+    - name: Iniciar e habilitar nslcd
+      systemd:
+        name: nslcd
+        state: started
+        enabled: yes
+    - name: Configurar /etc/nsswitch.conf para usar LDAP
+      replace:
+        path: /etc/nsswitch.conf
+        regexp: '^(passwd|shadow|group):\s*(.*)$'
+        replace: '\1: files ldap'
+    - name: Configurar autenticação via authselect
+      shell: authselect select nis with-mkhomedir --force
+      ignore_errors: yes
+    - name: Testar autenticação LDAP
+      no_log: true
+      command: id leandro
+      register: id_test
+      ignore_errors: yes
+    - name: Resultado da autenticação
+      debug:
+        msg: "✅ Usuário 'leandro' autenticado com sucesso!"
+      when: id_test.rc == 0
+    - name: Aviso se usuário não existir
+      debug:
+        msg: "⚠️ Usuário 'leandro' não encontrado no LDAP."
+      when: id_test.rc != 0
