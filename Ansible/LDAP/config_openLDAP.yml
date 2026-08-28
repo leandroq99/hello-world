@@ -1,5 +1,5 @@
 - name: Instalar e configurar autenticação LDAP nos clients
-  hosts: all
+  hosts: "{{ target_hosts }}"
   become: yes
   vars:
     ldap_server: "ipa-ldap.lab.local"
