@@ -1,30 +1,35 @@
-- name: Configurar autenticação LDAP com SSSD
+- name: Configurar autenticação LDAP com nslcd
   hosts: "{{ target_hosts }}"
   become: yes
   vars:
     ldap_server: "ipa-ldap.lab.local"
     ldap_base_dn: "dc=ipa,dc=local"
     ldap_bind_dn: "cn=admin,dc=ipa,dc=local"
-    # ldap_bind_pw via extra_vars
+    ldap_bind_pw: "{{ ldap_bind_pw }}" # Deve ser passada via extra_vars
   tasks:
-    # 1. Instala o SSSD e remove o nslcd
-    - name: Remover nslcd e instalar SSSD
+    - name: Instalar pacotes LDAP
       dnf:
         name:
-          - sssd
-          - sssd-ldap
+          - epel-release
           - openldap-clients
+          - nss-pam-ldapd
           - authselect
+          - oddjob
+          - oddjob-mkhomedir
         state: present
-      register: install_result
-      ignore_errors: yes
-    - name: Parar e desabilitar nslcd (se existente)
-      systemd:
+    - name: Criar usuário e grupo nslcd (se não existir)
+      group:
         name: nslcd
-        state: stopped
-        enabled: no
+        state: present
+        system: yes
       ignore_errors: yes
-    # 2. Configuração do cliente OpenLDAP
+    - name: Criar usuário nslcd
+      user:
+        name: nslcd
+        group: nslcd
+        system: yes
+        create_home: no
+      ignore_errors: yes
     - name: Configurar /etc/openldap/ldap.conf
       copy:
         dest: /etc/openldap/ldap.conf
@@ -32,59 +37,50 @@
           BASE {{ ldap_base_dn }}
           URI ldap://{{ ldap_server }}
           TLS_REQCERT never
-    # 3. Configuração do SSSD (O coração da nova autenticação)
-    - name: Configurar /etc/sssd/sssd.conf
+    - name: Configurar /etc/nslcd.conf
       no_log: true
       copy:
-        dest: /etc/sssd/sssd.conf
+        dest: /etc/nslcd.conf
         mode: '0600'
-        owner: root
-        group: root
+        owner: nslcd
+        group: nslcd
         content: |
-          [sssd]
-          config_file_version = 2
-          services = nss, pam
-          domains = lab.local
-
-          [domain/lab.local]
-          id_provider = ldap
-          auth_provider = ldap
-          ldap_uri = ldap://{{ ldap_server }}
-          ldap_search_base = {{ ldap_base_dn }}
-          ldap_default_bind_dn = {{ ldap_bind_dn }}
-          ldap_default_authtok = {{ ldap_bind_pw }}
-          cache_credentials = True
-          ldap_id_mapping = true
-          ldap_user_uid_number = uidNumber
-          ldap_user_gid_number = gidNumber
-          ldap_user_home_directory = homeDirectory
-          ldap_user_shell = loginShell
-    # 4. Configuração do sistema para usar o SSSD
-    - name: Configurar autenticação via authselect
-      shell: authselect select sssd with-mkhomedir --force
-      ignore_errors: yes
-    # 5. Atualizar /etc/nsswitch.conf
-    - name: Configurar nsswitch para usar SSSD
-      replace:
-        path: /etc/nsswitch.conf
-        regexp: '^(passwd|shadow|group):\s*(.*)$'
-        replace: '\1: sss files'
-    - name: Iniciar e habilitar o SSSD
+          uri ldap://{{ ldap_server }}
+          base {{ ldap_base_dn }}
+          binddn {{ ldap_bind_dn }}
+          bindpw {{ ldap_bind_pw }}
+          ssl no
+          tls_reqcert never
+          filter passwd (objectClass=posixAccount)
+          filter shadow (objectClass=posixAccount)
+          filter group (objectClass=posixGroup)
+          map passwd uidNumber uidNumber
+          map passwd gidNumber gidNumber
+    - name: Iniciar e habilitar nslcd
       systemd:
-        name: sssd
-        state: restarted
+        name: nslcd
+        state: started
         enabled: yes
-      register: sssd_start
-    - name: Verificar logs do SSSD (se falhou)
-      shell: journalctl -u sssd --no-pager | tail -10
-      register: sssd_logs
-      when: sssd_start.failed
+    - name: Configurar /etc/nsswitch.conf
+      copy:
+        dest: /etc/nsswitch.conf
+        content: |
+          passwd:     files ldap
+          shadow:     files ldap
+          group:      files ldap
+          hosts:      files dns myhostname
+          services:   files
+          netgroup:   files
+          sudoers:    files
+          automount:  files
+    - name: Iniciar oddjobd (para criar home directories)
+      systemd:
+        name: oddjobd
+        state: started
+        enabled: yes
+    - name: Configurar autenticação via authselect
+      shell: authselect select nis with-mkhomedir --force
       ignore_errors: yes
-    - name: Exibir logs do SSSD
-      debug:
-        msg: "{{ sssd_logs.stdout_lines }}"
-      when: sssd_start.failed
-    # 6. Teste de autenticação
     - name: Testar autenticação LDAP
       no_log: true
       command: id leandro
@@ -92,7 +88,7 @@
       ignore_errors: yes
     - name: Resultado da autenticação
       debug:
-        msg: "✅ Usuário 'leandro' autenticado com sucesso!"
+        msg: "✅ Autenticação LDAP funcionando!"
       when: id_test.rc == 0
     - name: Aviso se usuário não existir
       debug:
