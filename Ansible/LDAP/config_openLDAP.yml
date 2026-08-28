@@ -7,10 +7,13 @@
     ldap_bind_dn: "cn=admin,dc=ipa,dc=local"
     ldap_bind_pw: "{{ ldap_bind_pw }}" # Deve ser passada via extra_vars
   tasks:
+    - name: Instalar EPEL (repositório extra)
+      dnf:
+        name: epel-release
+        state: present
     - name: Instalar pacotes LDAP
       dnf:
         name:
-          - epel-release
           - openldap-clients
           - nss-pam-ldapd
           - authselect
