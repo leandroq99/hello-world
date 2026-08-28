@@ -1,5 +1,5 @@
 - name: Configurar /etc/resolv.conf para usar DNS interno
-  hosts: all
+  hosts: "{{ target_hosts }}"
   become: yes
   vars:
     dns_primary: "172.89.0.50"
