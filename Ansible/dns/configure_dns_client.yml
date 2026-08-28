@@ -1,46 +1,34 @@
-- name: Configurar DNS dos clients para usar o servidor interno
-  hosts: dns-clients
+- name: Configurar /etc/resolv.conf para usar DNS interno
+  hosts: all
   become: yes
   vars:
-    dns_server: "172.89.0.50"
+    dns_primary: "172.89.0.50"
+    dns_secondary: "10.0.2.3"
     dns_domain: "lab.local"
-    interface_primary: "System eth1"
-    interface_nat: "eth0"
+    dns_search_domains:
+      - "lab.local"
+      - "intelbras.local"
+    resolv_options: "timeout:2 attempts:3"
   tasks:
-    - name: Remover DNS automático da interface NAT (eth0)
-      community.general.nmcli:
-        conn_name: "{{ interface_nat }}"
-        state: present
-        type: ethernet
-        dns: []
-        dns_ignore_auto: yes
-      ignore_errors: yes
-      when: interface_nat is defined
-    - name: Configurar DNS na interface primária (eth1)
-      community.general.nmcli:
-        conn_name: "{{ interface_primary }}"
-        state: present
-        type: ethernet
-        dns:
-          - "{{ dns_server }}"
-        dns_ignore_auto: yes
-        dns_search:
-          - "{{ dns_domain }}"
-      ignore_errors: yes
-    - name: Reiniciar a interface primária
-      community.general.nmcli:
-        conn_name: "{{ interface_primary }}"
-        state: down
-      ignore_errors: yes
-    - name: Iniciar a interface primária
-      community.general.nmcli:
-        conn_name: "{{ interface_primary }}"
-        state: up
-      ignore_errors: yes
-    - name: Reiniciar o NetworkManager
-      systemd:
-        name: NetworkManager
-        state: restarted
+    - name: Remover imutabilidade do /etc/resolv.conf (se existir)
+      shell: chattr -i /etc/resolv.conf 2>/dev/null || true
+      changed_when: false
+    - name: Criar /etc/resolv.conf com a configuração correta
+      copy:
+        dest: /etc/resolv.conf
+        content: |
+          search {{ dns_search_domains | join(' ') }}
+          nameserver {{ dns_primary }}
+          nameserver {{ dns_secondary }}
+          options {{ resolv_options }}
+        owner: root
+        group: root
+        mode: '0644'
+      register: resolv_config
+    - name: Tornar /etc/resolv.conf imutável (evita sobrescrita)
+      shell: chattr +i /etc/resolv.conf
+      changed_when: false
+      when: resolv_config.changed
     - name: Verificar conteúdo do /etc/resolv.conf
       command: cat /etc/resolv.conf
       register: resolv_output
@@ -61,3 +49,12 @@
       debug:
         msg: "⚠️ Não foi possível resolver dns-server. Verifique a configuração."
       when: nslookup_output.rc != 0
+    - name: Testar resolução de um host interno
+      command: nslookup grafana
+      register: nslookup_grafana
+      changed_when: false
+      ignore_errors: yes
+    - name: Exibir resultado do nslookup grafana
+      debug:
+        msg: "{{ nslookup_grafana.stdout_lines }}"
+      when: nslookup_grafana.rc == 0
