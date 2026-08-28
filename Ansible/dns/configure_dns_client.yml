@@ -1,15 +1,63 @@
-- name: Configure DNS Client
+- name: Configurar DNS dos clients para usar o servidor interno
   hosts: dns-clients
-  become: true
+  become: yes
   vars:
-    dns_server_ip: "172.89.0.50"
-    dns_search_domain: "lab.local"
+    dns_server: "172.89.0.50"
+    dns_domain: "lab.local"
+    interface_primary: "System eth1"
+    interface_nat: "eth0"
   tasks:
-    - name: Configurar DNS server na interface eth1
-      command: nmcli con mod "System eth1" ipv4.dns "{{ dns_server_ip }}"
-    - name: Configurar prioridade do DNS
-      command: nmcli con mod "System eth1" ipv4.dns-priority -1
-    - name: Configurar search domain
-      command: nmcli con mod "System eth1" ipv4.dns-search "{{ dns_search_domain }}"
-    - name: Aplicar as configurações
-      command: nmcli con up "System eth1"
+    - name: Remover DNS automático da interface NAT (eth0)
+      community.general.nmcli:
+        conn_name: "{{ interface_nat }}"
+        state: present
+        type: ethernet
+        dns: []
+        dns_ignore_auto: yes
+      ignore_errors: yes
+      when: interface_nat is defined
+    - name: Configurar DNS na interface primária (eth1)
+      community.general.nmcli:
+        conn_name: "{{ interface_primary }}"
+        state: present
+        type: ethernet
+        dns:
+          - "{{ dns_server }}"
+        dns_ignore_auto: yes
+        dns_search:
+          - "{{ dns_domain }}"
+      ignore_errors: yes
+    - name: Reiniciar a interface primária
+      community.general.nmcli:
+        conn_name: "{{ interface_primary }}"
+        state: down
+      ignore_errors: yes
+    - name: Iniciar a interface primária
+      community.general.nmcli:
+        conn_name: "{{ interface_primary }}"
+        state: up
+      ignore_errors: yes
+    - name: Reiniciar o NetworkManager
+      systemd:
+        name: NetworkManager
+        state: restarted
+    - name: Verificar conteúdo do /etc/resolv.conf
+      command: cat /etc/resolv.conf
+      register: resolv_output
+      changed_when: false
+    - name: Exibir /etc/resolv.conf
+      debug:
+        msg: "{{ resolv_output.stdout_lines }}"
+    - name: Testar resolução do servidor DNS
+      command: nslookup dns-server
+      register: nslookup_output
+      changed_when: false
+      ignore_errors: yes
+    - name: Exibir resultado do nslookup
+      debug:
+        msg: "{{ nslookup_output.stdout_lines }}"
+      when: nslookup_output.rc == 0
+    - name: Aviso se nslookup falhou
+      debug:
+        msg: "⚠️ Não foi possível resolver dns-server. Verifique a configuração."
+      when: nslookup_output.rc != 0
