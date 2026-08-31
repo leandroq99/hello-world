@@ -1,5 +1,5 @@
 - name: Add DNS Record
-  hosts: dns-server
+  hosts: "{{ target_hosts }}"
   become: true
   vars:
     dns_zone: "lab.local"
