@@ -1,6 +1,52 @@
-- name: Gather facts
+- name: Armazenar facts em múltiplos destinos
   hosts: "{{ target_hosts }}"
+  gather_facts: true
+  vars:
+    local_facts_dir: "/tmp/awx_facts"
+    remote_facts_dir: "/etc/ansible/facts.d"
+    enable_cache: true
+    enable_file: true
+    enable_remote: true
   tasks:
-    - name: Display gathered facts
+    # 1. Criar diretório local
+    - name: Criar diretório para facts
+      file:
+        path: "{{ local_facts_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      run_once: true
+      when: enable_file | bool
+    # 2. Salvar em arquivo local (no pod AWX)
+    - name: Salvar facts em arquivo local
+      copy:
+        content: "{{ ansible_facts | to_nice_json }}"
+        dest: "{{ local_facts_dir }}/{{ inventory_hostname }}.json"
+      delegate_to: localhost
+      when: enable_file | bool
+    # 3. Salvar no cache do Ansible
+    - name: Armazenar facts no cache
+      set_fact:
+        cached_facts: "{{ ansible_facts }}"
+        cacheable: true
+      when: enable_cache | bool
+    # 4. Salvar no próprio host
+    - name: Criar diretório remoto
+      file:
+        path: "{{ remote_facts_dir }}"
+        state: directory
+        mode: '0755'
+      when: enable_remote | bool
+    - name: Salvar facts no host remoto
+      copy:
+        content: "{{ ansible_facts | to_nice_json }}"
+        dest: "{{ remote_facts_dir }}/{{ inventory_hostname }}.json"
+      when: enable_remote | bool
+    # 5. Verificar e exibir
+    - name: Exibir sumário dos facts
       debug:
-        var: ansible_facts
+        msg:
+          - "✅ Facts coletados de {{ inventory_hostname }}"
+          - "📁 Arquivo local: {{ local_facts_dir }}/{{ inventory_hostname }}.json"
+          - "📁 Arquivo remoto: {{ remote_facts_dir }}/{{ inventory_hostname }}.json"
+          - "💾 Cache: {{ 'Ativado' if enable_cache else 'Desativado' }}"
