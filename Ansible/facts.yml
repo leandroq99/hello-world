@@ -1,6 +1,5 @@
 - name: Gather facts
   hosts: "{{ target_hosts }}"
-  gather_facts: true
   tasks:
     - name: Display gathered facts
       debug:
