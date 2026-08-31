@@ -1,52 +1,142 @@
 - name: Armazenar facts em múltiplos destinos
-  hosts: "{{ target_hosts }}"
+  hosts: "{{ target_hosts | default('all') }}"
   gather_facts: true
   vars:
     local_facts_dir: "/tmp/awx_facts"
-    remote_facts_dir: "/etc/ansible/facts.d"
+    remote_facts_dir: "/tmp/ansible_facts" # ✅ Mudado para /tmp
     enable_cache: true
     enable_file: true
-    enable_remote: true
+    enable_remote: false # ✅ Desativado por padrão
+    enable_debug: true
   tasks:
-    # 1. Criar diretório local
-    - name: Criar diretório para facts
+    # ============================================
+    # 1. PREPARAÇÃO DO AMBIENTE LOCAL (NO POD AWX)
+    # ============================================
+    - name: Criar diretório local para facts
       file:
         path: "{{ local_facts_dir }}"
         state: directory
-        mode: '0755'
+        mode: '0777'
       delegate_to: localhost
       run_once: true
       when: enable_file | bool
-    # 2. Salvar em arquivo local (no pod AWX)
+      become: false
+      register: dir_result
+      ignore_errors: true
+    - name: Verificar criação do diretório local
+      debug:
+        msg: "✅ Diretório local criado: {{ local_facts_dir }}"
+      when: dir_result is succeeded and enable_file | bool
+    # ============================================
+    # 2. SALVAR EM ARQUIVO LOCAL (POD AWX)
+    # ============================================
     - name: Salvar facts em arquivo local
       copy:
         content: "{{ ansible_facts | to_nice_json }}"
         dest: "{{ local_facts_dir }}/{{ inventory_hostname }}.json"
       delegate_to: localhost
       when: enable_file | bool
-    # 3. Salvar no cache do Ansible
+      register: local_save
+    - name: Confirmar salvamento local
+      debug:
+        msg: "✅ Facts salvos localmente: {{ local_facts_dir }}/{{ inventory_hostname }}.json"
+      when: local_save is succeeded and enable_file | bool
+    # ============================================
+    # 3. SALVAR NO CACHE DO ANSIBLE
+    # ============================================
     - name: Armazenar facts no cache
       set_fact:
         cached_facts: "{{ ansible_facts }}"
         cacheable: true
       when: enable_cache | bool
-    # 4. Salvar no próprio host
-    - name: Criar diretório remoto
+      register: cache_result
+    - name: Confirmar cache
+      debug:
+        msg: "💾 Facts armazenados em cache para {{ inventory_hostname }}"
+      when: cache_result is succeeded and enable_cache | bool
+    # ============================================
+    # 4. SALVAR NO HOST REMOTO (OPCIONAL)
+    # ============================================
+    - name: Criar diretório remoto (sem escalonamento)
       file:
         path: "{{ remote_facts_dir }}"
         state: directory
         mode: '0755'
-      when: enable_remote | bool
-    - name: Salvar facts no host remoto
+      when:
+        - enable_remote | bool
+        - remote_facts_dir | regex_search('^/tmp/|^/home/|^/var/tmp/') # ✅ Apenas diretórios seguros
+      register: remote_dir
+      ignore_errors: true
+    - name: Tentar criar diretório com escalonamento (se falhou)
+      file:
+        path: "{{ remote_facts_dir }}"
+        state: directory
+        mode: '0755'
+      when:
+        - enable_remote | bool
+        - remote_dir is failed or remote_dir is undefined
+      become: true
+      become_user: root
+      register: remote_dir_become
+      ignore_errors: true
+    - name: Salvar facts no host remoto (sem escalonamento)
       copy:
         content: "{{ ansible_facts | to_nice_json }}"
         dest: "{{ remote_facts_dir }}/{{ inventory_hostname }}.json"
-      when: enable_remote | bool
-    # 5. Verificar e exibir
-    - name: Exibir sumário dos facts
+      when:
+        - enable_remote | bool
+        - remote_dir is succeeded or remote_dir_become is succeeded
+      register: remote_save
+      ignore_errors: true
+    - name: Tentar salvar com escalonamento (se falhou)
+      copy:
+        content: "{{ ansible_facts | to_nice_json }}"
+        dest: "{{ remote_facts_dir }}/{{ inventory_hostname }}.json"
+      when:
+        - enable_remote | bool
+        - remote_save is failed
+      become: true
+      become_user: root
+      register: remote_save_become
+      ignore_errors: true
+    - name: Confirmar salvamento remoto
+      debug:
+        msg: "📁 Facts salvos remotamente: {{ remote_facts_dir }}/{{ inventory_hostname }}.json"
+      when:
+        - enable_remote | bool
+        - remote_save is succeeded or remote_save_become is succeeded
+    # ============================================
+    # 5. EXIBIR SUMÁRIO
+    # ============================================
+    - name: Exibir sumário dos facts coletados
       debug:
         msg:
-          - "✅ Facts coletados de {{ inventory_hostname }}"
+          - "─────────────────────────────────────────────"
+          - "✅ FACTS COLETADOS: {{ inventory_hostname }}"
+          - "─────────────────────────────────────────────"
+          - "📂 OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "🖥️  Kernel: {{ ansible_kernel }}"
+          - "💾 RAM Total: {{ ansible_memtotal_mb }} MB"
+          - "💿 Disk Total: {{ (ansible_mounts | map(attribute='size_total') | sum / 1024**3) | round(2) }} GB"
+          - "🌐 IP: {{ ansible_default_ipv4.address | default('N/A') }}"
+          - "─────────────────────────────────────────────"
           - "📁 Arquivo local: {{ local_facts_dir }}/{{ inventory_hostname }}.json"
           - "📁 Arquivo remoto: {{ remote_facts_dir }}/{{ inventory_hostname }}.json"
-          - "💾 Cache: {{ 'Ativado' if enable_cache else 'Desativado' }}"
+          - "💾 Cache Ansible: {{ 'Ativado' if enable_cache else 'Desativado' }}"
+          - "─────────────────────────────────────────────"
+      when: enable_debug | bool
+    # ============================================
+    # 6. VALIDAÇÃO FINAL
+    # ============================================
+    - name: Verificar se arquivo foi criado localmente
+      stat:
+        path: "{{ local_facts_dir }}/{{ inventory_hostname }}.json"
+      delegate_to: localhost
+      register: file_check
+      when: enable_file | bool
+    - name: Exibir status final
+      debug:
+        msg:
+          - "📄 Arquivo local: {{ 'EXISTE' if file_check.stat.exists else '❌ NÃO ENCONTRADO' }}"
+          - "📏 Tamanho: {{ file_check.stat.size }} bytes"
+      when: file_check is defined and enable_file | bool
