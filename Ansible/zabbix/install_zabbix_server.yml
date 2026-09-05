@@ -84,6 +84,7 @@
           - zabbix-selinux-policy
           - zabbix-agent
         state: present
+        disablerepo: epel
     # Schema do banco
     # ========================
     - name: Verificar se o schema já foi importado
