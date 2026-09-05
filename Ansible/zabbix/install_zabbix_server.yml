@@ -27,6 +27,8 @@
         state: started
     - name: Definir senha do root do MySQL
       mysql_user:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
         login_unix_socket: /var/lib/mysql/mysql.sock
         name: root
         host: localhost
