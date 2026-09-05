@@ -16,6 +16,10 @@ LogFile=/var/log/zabbix/zabbix_server.log
 LogFileSize=10
 DebugLevel=3
 
+# PID file (precisa bater com PIDFile= da unit do systemd, senao o
+# systemd nunca sai do estado "activating")
+PidFile=/run/zabbix/zabbix_server.pid
+
 # Outros
 ListenPort=10051
 Timeout=4
